@@ -3,9 +3,11 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+uint256 constant NULL = 0;
+
 contract DataRegistry is Ownable {
     struct DataRecord {
-        address owner;      // who controls this data
+        address provider;   // who provides this data
         bytes32 dataHash;   // hash / pointer to off-chain data
         string dataType;    // e.g. "steps", "heart_rate"
         string uri;         // optional pointer (ipfs://..., https://..., etc.)
@@ -21,7 +23,7 @@ contract DataRegistry is Ownable {
 
     event DataRegistered(
         uint256 indexed dataId,
-        address indexed owner,
+        address indexed provider,
         bytes32 dataHash,
         string dataType,
         string uri
@@ -29,13 +31,13 @@ contract DataRegistry is Ownable {
 
     event AccessGranted(
         uint256 indexed dataId,
-        address indexed owner,
+        address indexed provider,
         address indexed grantee
     );
 
     event AccessRevoked(
         uint256 indexed dataId,
-        address indexed owner,
+        address indexed provider,
         address indexed grantee
     );
 
@@ -52,7 +54,7 @@ contract DataRegistry is Ownable {
     }
 
     modifier onlyRecordController(uint256 dataId) {
-        address owner = records[dataId].owner;
+        address owner = records[dataId].provider;
         require(
             msg.sender == owner || msg.sender == marketplace,
             "Not data owner"
@@ -87,7 +89,7 @@ contract DataRegistry is Ownable {
     {
         require(grantee != address(0), "Invalid grantee");
         hasAccess[dataId][grantee] = true;
-        emit AccessGranted(dataId, records[dataId].owner, grantee);
+        emit AccessGranted(dataId, records[dataId].provider, grantee);
     }
 
     function revokeAccess(uint256 dataId, address grantee)
@@ -96,13 +98,13 @@ contract DataRegistry is Ownable {
     {
         require(hasAccess[dataId][grantee], "No access to revoke");
         hasAccess[dataId][grantee] = false;
-        emit AccessRevoked(dataId, records[dataId].owner, grantee);
+        emit AccessRevoked(dataId, records[dataId].provider, grantee);
     }
 
     function canAccess(uint256 dataId, address user) external view returns (bool) {
         DataRecord memory rec = records[dataId];
-        if (rec.owner == address(0)) return false;
-        if (user == rec.owner) return true;
+        if (rec.provider == address(0)) return false;
+        if (user == rec.provider) return true;
         return hasAccess[dataId][user];
     }
 }
