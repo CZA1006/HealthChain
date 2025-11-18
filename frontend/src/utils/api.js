@@ -46,15 +46,20 @@ const localStorageFallback = {
         return { message: 'User registered successfully', userId: newUser.id };
     },
     
-    // 用户登录
+    // 用户登录 - 修复版
     async login(credentials) {
         const users = JSON.parse(localStorage.getItem('healthchain_users') || '[]');
         
         let user;
         if (credentials.walletAddress) {
+            // 钱包登录
             user = users.find(u => u.walletAddress === credentials.walletAddress);
         } else if (credentials.username) {
-            user = users.find(u => u.username === credentials.username);
+            // ✅ 修复：同时匹配 username 和 email 字段
+            user = users.find(u => 
+                u.username === credentials.username || 
+                u.email === credentials.username
+            );
         }
         
         if (!user) {

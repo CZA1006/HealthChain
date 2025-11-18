@@ -76,6 +76,7 @@ app.post('/api/auth/register', async (req, res) => {
             [username, email, passwordHash, walletAddress],
             function(err) {
                 if (err) {
+                    console.error('Register error:', err);
                     if (err.message.includes('UNIQUE constraint failed')) {
                         return res.status(400).json({ error: 'Username or email already exists' });
                     }
@@ -89,87 +90,112 @@ app.post('/api/auth/register', async (req, res) => {
             }
         );
     } catch (error) {
+        console.error('Register error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// 用户登录
+// 用户登录 - 修复版
 app.post('/api/auth/login', async (req, res) => {
     const { username, password, walletAddress } = req.body;
 
     try {
-        db.get(
-            'SELECT * FROM users WHERE email = ? OR wallet_address = ?',
-            [username, walletAddress],
-            async (err, user) => {
-                if (err) {
-                    return res.status(500).json({ error: 'Database error' });
-                }
-                
-                if (!user) {
+        // 构建动态查询条件
+        let query = 'SELECT * FROM users WHERE ';
+        let params = [];
+        
+        if (walletAddress) {
+            // 钱包登录
+            query += 'wallet_address = ?';
+            params.push(walletAddress);
+        } else if (username) {
+            // 用户名/邮箱登录 - 同时匹配两个字段
+            query += '(username = ? OR email = ?)';
+            params.push(username, username);
+        } else {
+            return res.status(400).json({ error: 'Username or wallet address required' });
+        }
+        
+        db.get(query, params, async (err, user) => {
+            if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (!user) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
+
+            // 钱包登录验证
+            if (walletAddress && user.wallet_address === walletAddress) {
+                const token = jwt.sign(
+                    { userId: user.id, username: user.username },
+                    JWT_SECRET,
+                    { expiresIn: '24h' }
+                );
+
+                // 保存会话
+                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                db.run(
+                    'INSERT INTO sessions (user_id, token, wallet_address, expires_at) VALUES (?, ?, ?, ?)',
+                    [user.id, token, walletAddress, expiresAt.toISOString()],
+                    (err) => {
+                        if (err) {
+                            console.error('Session save error:', err);
+                        }
+                    }
+                );
+
+                return res.json({
+                    token,
+                    user: {
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        walletAddress: user.wallet_address
+                    }
+                });
+            }
+
+            // 密码登录验证
+            if (password) {
+                const isValidPassword = await bcrypt.compare(password, user.password_hash);
+                if (!isValidPassword) {
                     return res.status(401).json({ error: 'Invalid credentials' });
                 }
 
-                // 钱包登录验证
-                if (walletAddress && user.wallet_address === walletAddress) {
-                    const token = jwt.sign(
-                        { userId: user.id, username: user.username },
-                        JWT_SECRET,
-                        { expiresIn: '24h' }
-                    );
+                const token = jwt.sign(
+                    { userId: user.id, username: user.username },
+                    JWT_SECRET,
+                    { expiresIn: '24h' }
+                );
 
-                    // 保存会话
-                    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-                    db.run(
-                        'INSERT INTO sessions (user_id, token, wallet_address, expires_at) VALUES (?, ?, ?, ?)',
-                        [user.id, token, walletAddress, expiresAt.toISOString()]
-                    );
-
-                    return res.json({
-                        token,
-                        user: {
-                            id: user.id,
-                            username: user.username,
-                            email: user.email,
-                            walletAddress: user.wallet_address
+                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                db.run(
+                    'INSERT INTO sessions (user_id, token, wallet_address, expires_at) VALUES (?, ?, ?, ?)',
+                    [user.id, token, user.wallet_address, expiresAt.toISOString()],
+                    (err) => {
+                        if (err) {
+                            console.error('Session save error:', err);
                         }
-                    });
-                }
-
-                // 密码登录验证
-                if (password) {
-                    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-                    if (!isValidPassword) {
-                        return res.status(401).json({ error: 'Invalid credentials' });
                     }
+                );
 
-                    const token = jwt.sign(
-                        { userId: user.id, username: user.username },
-                        JWT_SECRET,
-                        { expiresIn: '24h' }
-                    );
-
-                    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-                    db.run(
-                        'INSERT INTO sessions (user_id, token, wallet_address, expires_at) VALUES (?, ?, ?, ?)',
-                        [user.id, token, user.wallet_address, expiresAt.toISOString()]
-                    );
-
-                    return res.json({
-                        token,
-                        user: {
-                            id: user.id,
-                            username: user.username,
-                            email: user.email,
-                            walletAddress: user.wallet_address
-                        }
-                    });
-                }
-
-                res.status(401).json({ error: 'Invalid credentials' });
+                return res.json({
+                    token,
+                    user: {
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        walletAddress: user.wallet_address
+                    }
+                });
             }
-        );
+
+            res.status(401).json({ error: 'Invalid credentials' });
+        });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -181,6 +207,7 @@ app.get('/api/user', authenticateToken, (req, res) => {
         [req.user.userId],
         (err, user) => {
             if (err) {
+                console.error('Get user error:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             
@@ -203,6 +230,7 @@ app.put('/api/user/preferences', authenticateToken, (req, res) => {
         [req.user.userId, theme, language, notificationsEnabled],
         function(err) {
             if (err) {
+                console.error('Update preferences error:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             
@@ -218,6 +246,7 @@ app.get('/api/user/preferences', authenticateToken, (req, res) => {
         [req.user.userId],
         (err, preferences) => {
             if (err) {
+                console.error('Get preferences error:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             
@@ -241,6 +270,7 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
         [token],
         function(err) {
             if (err) {
+                console.error('Logout error:', err);
                 return res.status(500).json({ error: 'Database error' });
             }
             
@@ -260,6 +290,7 @@ function authenticateToken(req, res, next) {
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
+            console.error('Token verification error:', err);
             return res.status(403).json({ error: 'Invalid token' });
         }
         req.user = user;
@@ -276,7 +307,7 @@ app.listen(PORT, () => {
     console.log(`HealthChain Backend API running on port ${PORT}`);
 });
 
-// 优雅关闭
+// 关闭
 process.on('SIGINT', () => {
     db.close((err) => {
         if (err) {
