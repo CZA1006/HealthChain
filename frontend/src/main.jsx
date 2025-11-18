@@ -3,56 +3,63 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import { healthChainAPI } from './utils/api'
 
 function Root() {
-    const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem('session'))
-    const [sessionInfo, setSessionInfo] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('session') || 'null')
-        } catch {
-            return null
-        }
-    })
+    const [loggedIn, setLoggedIn] = useState(healthChainAPI.isAuthenticated())
+    const [sessionInfo, setSessionInfo] = useState(null)
+    const [userInfo, setUserInfo] = useState(null)
 
     useEffect(() => {
-        function onStorage(e) {
-            if (e.key === 'session') {
-                setLoggedIn(!!e.newValue)
+        // 检查认证状态并获取用户信息
+        const checkAuthStatus = async () => {
+            if (healthChainAPI.isAuthenticated()) {
                 try {
-                    setSessionInfo(e.newValue ? JSON.parse(e.newValue) : null)
-                } catch {
+                    const userData = await healthChainAPI.getCurrentUser()
+                    setUserInfo(userData.user)
+                    setSessionInfo({
+                        type: 'api',
+                        email: userData.user.email,
+                        address: userData.user.walletAddress,
+                        ts: Date.now()
+                    })
+                    setLoggedIn(true)
+                } catch (error) {
+                    console.error('Failed to get user info:', error)
+                    // 认证失败，清理session
+                    await healthChainAPI.logout()
+                    setLoggedIn(false)
                     setSessionInfo(null)
+                    setUserInfo(null)
                 }
             }
         }
-        window.addEventListener('storage', onStorage)
-        return () => window.removeEventListener('storage', onStorage)
+
+        checkAuthStatus()
     }, [])
 
-    function handleLogin() {
+    async function handleLogin(user) {
         // called by LoginPage when login succeeds
-        const s = localStorage.getItem('session')
-        setLoggedIn(!!s)
-        try { setSessionInfo(s ? JSON.parse(s) : null) } catch { setSessionInfo(null) }
+        setUserInfo(user)
+        setSessionInfo({
+            type: 'api',
+            email: user.email,
+            address: user.walletAddress,
+            ts: Date.now()
+        })
+        setLoggedIn(true)
     }
 
-    function handleLogout() {
-        // remove session and update state
-        localStorage.removeItem('session')
+    async function handleLogout() {
+        try {
+            await healthChainAPI.logout()
+        } catch (error) {
+            console.error('Logout error:', error)
+        }
+        
         setLoggedIn(false)
         setSessionInfo(null)
-        // notify other tabs (best-effort)
-        try {
-            const storageEvent = new StorageEvent('storage', {
-                key: 'session',
-                oldValue: null,
-                newValue: null,
-                url: location.href,
-            })
-            window.dispatchEvent(storageEvent)
-        } catch {
-            // ignore if StorageEvent construction is restricted
-        }
+        setUserInfo(null)
     }
 
     if (!loggedIn) {
@@ -63,11 +70,11 @@ function Root() {
         <div>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid #eee' }}>
                 <div style={{ fontFamily: 'sans-serif' }}>
-                    <strong>App</strong>
+                    <strong>HealthChain</strong>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {sessionInfo && sessionInfo.email && <span style={{ fontSize: 14 }}>Signed in as {sessionInfo.email}</span>}
-                    {sessionInfo && sessionInfo.address && <span style={{ fontSize: 14 }}>Wallet: {sessionInfo.address}</span>}
+                    {userInfo && userInfo.email && <span style={{ fontSize: 14 }}>Signed in as {userInfo.email}</span>}
+                    {userInfo && userInfo.walletAddress && <span style={{ fontSize: 14 }}>Wallet: {userInfo.walletAddress}</span>}
                     <button onClick={handleLogout}>Logout</button>
                 </div>
             </header>

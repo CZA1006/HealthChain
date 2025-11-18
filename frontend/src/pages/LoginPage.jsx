@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { hashPassword, generateSalt, verifyPassword } from '../utils/crypto';
 import { ethers } from 'ethers';
+import { healthChainAPI } from '../utils/api';
 
 export default function LoginPage({ onLogin }) {
     const [mode, setMode] = useState('login'); // 'login' or 'register'
@@ -8,34 +8,27 @@ export default function LoginPage({ onLogin }) {
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
 
-    function saveUser(email, salt, hash) {
-        const users = JSON.parse(localStorage.getItem('users') || '{}');
-        users[email] = { salt, hash };
-        localStorage.setItem('users', JSON.stringify(users));
-    }
-
-    function getUser(email) {
-        const users = JSON.parse(localStorage.getItem('users') || '{}');
-        return users[email];
-    }
-
     async function handleRegister(e) {
         e.preventDefault();
         if (!email || !password) {
             setMessage('Please enter email and password');
             return;
         }
-        const existing = getUser(email);
-        if (existing) {
-            setMessage('User already exists, please log in');
-            return;
+
+        try {
+            await healthChainAPI.register({
+                username: email.split('@')[0],
+                email: email,
+                password: password,
+                walletAddress: null
+            });
+            
+            setMessage('Registration successful, you can now log in');
+            setMode('login');
+            setPassword('');
+        } catch (error) {
+            setMessage(error.message || 'Registration failed');
         }
-        const salt = await generateSalt();
-        const hash = await hashPassword(password, salt);
-        saveUser(email, salt, hash);
-        setMessage('Registration successful (demo), you can now log in');
-        setMode('login');
-        setPassword('');
     }
 
     async function handleLogin(e) {
@@ -44,19 +37,18 @@ export default function LoginPage({ onLogin }) {
             setMessage('Please enter email and password');
             return;
         }
-        const user = getUser(email);
-        if (!user) {
-            setMessage('User not found, please register first');
-            return;
-        }
-        const ok = await verifyPassword(password, user.salt, user.hash);
-        if (ok) {
-            localStorage.setItem('session', JSON.stringify({ type: 'password', email, ts: Date.now() }));
-            setMessage('Login successful (demo)');
+
+        try {
+            const result = await healthChainAPI.login({
+                username: email,
+                password: password
+            });
+            
+            setMessage('Login successful');
             setPassword('');
-            if (onLogin) onLogin();
-        } else {
-            setMessage('Incorrect password');
+            if (onLogin) onLogin(result.user);
+        } catch (error) {
+            setMessage(error.message || 'Login failed');
         }
     }
 
@@ -67,19 +59,19 @@ export default function LoginPage({ onLogin }) {
                 setMessage('No Ethereum wallet detected (e.g., MetaMask)');
                 return;
             }
+            
             const provider = new ethers.providers.Web3Provider(window.ethereum);
             await provider.send('eth_requestAccounts', []);
             const signer = provider.getSigner();
             const address = await signer.getAddress();
 
-            const nonce = Math.floor(Math.random() * 1e9).toString();
-            localStorage.setItem(`nonce:${address}`, nonce);
-
-            const signature = await signer.signMessage(`Login nonce: ${nonce}`);
-            localStorage.setItem('session', JSON.stringify({ type: 'wallet', address, signature, ts: Date.now() }));
-
+            // 使用钱包地址直接登录
+            const result = await healthChainAPI.login({
+                walletAddress: address
+            });
+            
             setMessage(`Wallet login successful: ${address}`);
-            if (onLogin) onLogin();
+            if (onLogin) onLogin(result.user);
         } catch (err) {
             console.error(err);
             setMessage('Wallet login failed: ' + (err.message || err));

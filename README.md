@@ -8,10 +8,44 @@
 > - Traded via a simple **decentralized marketplace**  
 > - Access-controlled through a **data registry** that records who is allowed to read a given dataset.
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- npm
+- MetaMask browser extension
+
+### One-Command Setup
+```bash
+# Clone the repository
+git clone <repository-url>
+cd HealthChain
+
+# Run the automated setup script
+./start-dev.sh
+```
+
+This will automatically:
+- Install all dependencies
+- Start the blockchain node
+- Deploy smart contracts
+- Launch the backend API
+- Start the frontend development server
+
+### Manual Setup (Alternative)
+```bash
+# Install dependencies
+npm run install-all
+
+# Start all services
+npm run dev
+```
+
 The current implementation runs fully locally using:
 
 - **Hardhat** (Solidity, local Ethereum node)
 - **React + Vite + ethers** (frontend demo dApp)
+- **Node.js + Express + SQLite** (backend API for user authentication and session management)
 - **MetaMask** (wallet, connected to the Hardhat `localhost` network)
 
 ---
@@ -36,11 +70,18 @@ At a high level, HealthChain consists of three smart contracts plus a minimal we
 
 4. **Frontend demo dApp (`frontend/` – Vite + React)**
    - Simple webpage that walks through the end-to-end flow:
-     1. Connect MetaMask (Hardhat Localhost).
-     2. Register wearable data (hash computed in the browser).
-     3. Create a listing for that dataset.
-     4. Switch to a second account, approve HTC, and buy access.
-     5. Check whether the current account can access the dataset.
+     1. User authentication via SQLite backend API or localStorage fallback
+     2. Connect MetaMask (Hardhat Localhost).
+     3. Register wearable data (hash computed in the browser).
+     4. Create a listing for that dataset.
+     5. Switch to a second account, approve HTC, and buy access.
+     6. Check whether the current account can access the dataset.
+
+5. **Backend API Service (`backend/` – Node.js + Express + SQLite)**
+   - RESTful API for user authentication and session management
+   - SQLite database for data persistence
+   - JWT-based authentication
+   - Automatic fallback to localStorage when backend is unavailable
 
 The entire system runs on a **local Hardhat node** and is intended as an easy-to-understand, inspectable prototype.
 
@@ -202,11 +243,36 @@ This installs Hardhat, Hardhat Toolbox, OpenZeppelin contracts, etc.
 
 ---
 
-## 5. Hardhat Backend Usage
+## 5. Backend Services Setup
+
+### 5.1 SQLite Backend API Setup
+
+First, install and start the backend service:
+
+```bash
+# Install backend dependencies
+cd backend
+npm install
+
+# Start the backend service (runs on port 3001)
+npm run dev
+```
+
+Or use the convenience script from the project root:
+
+```bash
+# Install all dependencies (backend + frontend + blockchain)
+npm run install-all
+
+# Start both backend and frontend simultaneously
+npm run dev
+```
+
+### 5.2 Hardhat Backend Usage
 
 All commands below assume **project root**: `HealthChain/`.
 
-### 5.1 Compile Contracts
+### 5.3 Compile Contracts
 
 ```bash
 npx hardhat compile
@@ -696,10 +762,24 @@ Some tasks we can work on next:
 
 For convenience, here’s the minimal checklist:
 
-1. **Backend**
-   1. `cd HealthChain`
-   2. `npx hardhat node`  *(Terminal 1 — keep running)*
-   3. `npx hardhat run scripts/deploy_with_marketplace.js --network localhost`  *(Terminal 2)*
+### Option 1: Complete Setup (Recommended)
+```bash
+# Install all dependencies
+npm run install-all
+
+# Start all services (backend + frontend + blockchain)
+npm run dev
+
+# Or use the convenience script
+./start-dev.sh
+```
+
+### Option 2: Manual Setup
+
+1. **Backend Services**
+   1. `cd HealthChain/backend && npm install && npm run dev`  *(Terminal 1 — backend API on port 3001)*
+   2. `cd HealthChain && npx hardhat node`  *(Terminal 2 — blockchain node on port 8545)*
+   3. `npx hardhat run scripts/deploy_with_marketplace.js --network localhost`  *(Terminal 3 — deploy contracts)*
 
 2. **MetaMask**
    1. Add network:
@@ -714,6 +794,13 @@ For convenience, here’s the minimal checklist:
    2. `npm install`  *(first time only)*
    3. `npm run dev`
    4. Open the printed URL (e.g. `http://localhost:5173/`).
+
+### New Features in SQLite Backend
+- User registration and login with password or wallet authentication
+- Persistent session management with JWT tokens
+- User preference settings stored in SQLite
+- Automatic fallback to localStorage if backend is unavailable
+- Enhanced security with bcrypt password hashing
 
 4. **Demo Flow**
    1. In MetaMask, select **seller (Account #0)** → connect in Step 1.

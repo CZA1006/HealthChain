@@ -3,6 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\" \"npm run blockchain\"",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "blockchain": "npx hardhat node",
+    "deploy": "npx hardhat run scripts/deploy_with_marketplace.js --network localhost",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,7 +17,8 @@
   "description": "",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
-    "hardhat": "^2.27.0"
+    "hardhat": "^2.27.0",
+    "concurrently": "^8.2.2"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",

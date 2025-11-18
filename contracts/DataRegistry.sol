@@ -72,7 +72,7 @@ contract DataRegistry is Ownable {
         uint256 dataId = ++nextDataId;
 
         records[dataId] = DataRecord({
-            owner: msg.sender,
+            provider: msg.sender,
             dataHash: dataHash,
             dataType: dataType,
             uri: uri,
