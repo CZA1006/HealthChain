@@ -72,7 +72,7 @@ function Root() {
         <div>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid #eee' }}>
                 <div style={{ fontFamily: 'sans-serif' }}>
-                    <strong>HealthChain</strong>
+                    
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {userInfo && userInfo.email && <span style={{ fontSize: 14 }}>Signed in as {userInfo.email}</span>}
