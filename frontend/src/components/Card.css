@@ -1,0 +1,84 @@
+/* src/components/Card.css */
+.card {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius-lg);
+  transition: all var(--transition-base);
+  overflow: hidden;
+}
+
+/* ===== Variants ===== */
+.card-default {
+  border: 1px solid var(--border-color);
+}
+
+.card-outlined {
+  border: 2px solid var(--border-color);
+}
+
+.card-elevated {
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ===== Padding ===== */
+.card-padding-sm .card-body {
+  padding: var(--space-md);
+}
+
+.card-padding-md .card-body {
+  padding: var(--space-lg);
+}
+
+.card-padding-lg .card-body {
+  padding: var(--space-xl);
+}
+
+.card-padding-sm .card-header,
+.card-padding-sm .card-footer {
+  padding: var(--space-md);
+}
+
+.card-padding-md .card-header,
+.card-padding-md .card-footer {
+  padding: var(--space-lg);
+}
+
+.card-padding-lg .card-header,
+.card-padding-lg .card-footer {
+  padding: var(--space-xl);
+}
+
+/* ===== Hoverable ===== */
+.card-hoverable {
+  cursor: pointer;
+}
+
+.card-hoverable:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--color-primary);
+}
+
+/* ===== Header ===== */
+.card-header {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.card-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: var(--space-xs) 0 0 0;
+}
+
+/* ===== Footer ===== */
+.card-footer {
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}

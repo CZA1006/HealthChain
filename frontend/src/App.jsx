@@ -1,4 +1,4 @@
-// frontend/src/App.jsx
+// src/App.jsx - 优化版本
 import { useState } from "react";
 import "./App.css";
 import { ethers } from "ethers";
@@ -13,16 +13,23 @@ import HTC_ARTIFACT from "./contracts/HealthChainToken.json";
 import REGISTRY_ARTIFACT from "./contracts/DataRegistry.json";
 import MARKET_ARTIFACT from "./contracts/Marketplace.json";
 
+// 导入新组件
+import Card from './components/Card';
+import Button from './components/Button';
+import Input from './components/Input';
+import Textarea from './components/Textarea';
+import Badge from './components/Badge';
+import LoadingSpinner from './components/LoadingSpinner';
+import { ToastContainer } from './components/Toast';
+import { useToast } from './hooks/useToast';
+
 function App() {
   const [account, setAccount] = useState(null);
   const [chainId, setChainId] = useState(null);
   const [htcBalance, setHtcBalance] = useState("0");
+  const [loading, setLoading] = useState(false);
 
-  const [status, setStatus] = useState("");
-
-  const [dataContent, setDataContent] = useState(
-    "wearable steps data for sale"
-  );
+  const [dataContent, setDataContent] = useState("wearable steps data for sale");
   const [dataType, setDataType] = useState("steps");
   const [dataUri, setDataUri] = useState("ipfs://steps-demo");
   const [lastDataId, setLastDataId] = useState(null);
@@ -41,11 +48,15 @@ function App() {
     marketplace: null,
   });
 
-  // --- helper: connect wallet + create contract instances ---
+  // 使用 Toast Hook
+  const { toasts, toast, removeToast } = useToast();
+
+  // Connect Wallet
   const connectWallet = async () => {
+    setLoading(true);
     try {
       if (!window.ethereum) {
-        alert("MetaMask not detected. Please install the extension.");
+        toast.error("MetaMask not detected. Please install the extension.");
         return;
       }
 
@@ -78,209 +89,359 @@ function App() {
       setAccount(addr);
       setChainId(net.chainId.toString());
       setHtcBalance(ethers.formatUnits(bal, 18));
-      setStatus("Connected to MetaMask and HealthChain contracts ✅");
+      
+      toast.success("Connected to MetaMask successfully!");
     } catch (err) {
       console.error(err);
-      setStatus("Error connecting: " + (err.reason || err.message || String(err)));
+      toast.error("Error connecting: " + (err.reason || err.message || String(err)));
+    } finally {
+      setLoading(false);
     }
   };
 
-  // --- 2. Register data ---
+  // Register Data
   const registerData = async () => {
+    setLoading(true);
     try {
       const { registry } = contracts;
-      if (!registry) return alert("Connect wallet first");
+      if (!registry) {
+        toast.error("Connect wallet first");
+        return;
+      }
 
       const dataHash = ethers.keccak256(ethers.toUtf8Bytes(dataContent));
-      setStatus("Registering data...");
+      toast.info("Registering data...");
 
       const tx = await registry.registerData(dataHash, dataType, dataUri);
-      const receipt = await tx.wait();
+      await tx.wait();
 
-      // our contract has `uint256 public nextDataId`
       let newId = 1;
       try {
         const nextId = await registry.nextDataId();
         newId = Number(nextId) - 1;
       } catch {
-        // fallback for safety
+        // fallback
       }
 
       setLastDataId(newId);
       setListDataId(String(newId));
 
-      setStatus(
-        `Data registered (dataId = ${newId}). Hash = ${dataHash.slice(0, 10)}...`
-      );
+      toast.success(`Data registered successfully! DataId: ${newId}`);
     } catch (err) {
       console.error(err);
-      setStatus("Error registering data: " + (err.reason || err.message || String(err)));
+      toast.error("Error registering data: " + (err.reason || err.message || String(err)));
+    } finally {
+      setLoading(false);
     }
   };
 
-  // --- 3. Create marketplace listing ---
+  // Create Listing
   const createListing = async () => {
+    setLoading(true);
     try {
       const { marketplace } = contracts;
-      if (!marketplace) return alert("Connect wallet first");
+      if (!marketplace) {
+        toast.error("Connect wallet first");
+        return;
+      }
 
       const id = Number(listDataId);
-      if (!id) return alert("Enter a valid dataId");
+      if (!id) {
+        toast.error("Enter a valid dataId");
+        return;
+      }
 
       const priceWei = ethers.parseUnits(listPrice, 18);
-      setStatus("Creating listing...");
+      toast.info("Creating listing...");
 
       const tx = await marketplace.createListing(id, priceWei);
       await tx.wait();
 
-      setStatus(`Listing created for dataId ${id} at price ${listPrice} HTC.`);
+      toast.success(`Listing created for dataId ${id} at ${listPrice} HTC`);
     } catch (err) {
       console.error(err);
-      setStatus("Error creating listing: " + (err.reason || err.message || String(err)));
+      toast.error("Error creating listing: " + (err.reason || err.message || String(err)));
+    } finally {
+      setLoading(false);
     }
   };
 
-  // --- 4. Buyer: approve + buy access ---
+  // Buy Access
   const buyAccess = async () => {
+    setLoading(true);
     try {
       const { htc, marketplace } = contracts;
-      if (!htc || !marketplace) return alert("Connect wallet first");
+      if (!htc || !marketplace) {
+        toast.error("Connect wallet first");
+        return;
+      }
 
       const id = Number(buyDataId);
-      if (!id) return alert("Enter a valid dataId");
+      if (!id) {
+        toast.error("Enter a valid dataId");
+        return;
+      }
 
-      setStatus("Reading listing...");
+      toast.info("Reading listing...");
       const listing = await marketplace.listings(id);
       if (!listing.active) {
-        setStatus("Listing is not active.");
+        toast.error("Listing is not active");
         return;
       }
 
       const price = listing.price;
 
-      setStatus(
-        `Approving ${ethers.formatUnits(price, 18)} HTC for marketplace...`
-      );
+      toast.info(`Approving ${ethers.formatUnits(price, 18)} HTC...`);
       const approveTx = await htc.approve(MARKETPLACE_ADDRESS, price);
       await approveTx.wait();
 
-      setStatus("Buying access via marketplace...");
+      toast.info("Buying access...");
       const buyTx = await marketplace.buyAccess(id);
       await buyTx.wait();
 
       const bal = await htc.balanceOf(account);
       setHtcBalance(ethers.formatUnits(bal, 18));
 
-      setStatus(`Access purchased for dataId ${id} ✅`);
+      toast.success(`Access purchased successfully for dataId ${id}!`);
     } catch (err) {
       console.error(err);
-      setStatus("Error buying access: " + (err.reason || err.message || String(err)));
+      toast.error("Error buying access: " + (err.reason || err.message || String(err)));
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Check Access
   const checkMyAccess = async () => {
     try {
       const { registry } = contracts;
-      if (!registry) return alert("Connect wallet first");
+      if (!registry) {
+        toast.error("Connect wallet first");
+        return;
+      }
 
       const id = Number(buyDataId || listDataId || lastDataId);
-      if (!id) return alert("Enter a dataId to check");
+      if (!id) {
+        toast.error("Enter a dataId to check");
+        return;
+      }
 
       const ok = await registry.canAccess(id, account);
       setHasAccess(ok);
-      setStatus(`Access check for dataId ${id}: ${ok ? "YES" : "NO"}`);
+      
+      if (ok) {
+        toast.success(`You have access to dataId ${id}!`);
+      } else {
+        toast.warning(`You don't have access to dataId ${id}`);
+      }
     } catch (err) {
       console.error(err);
-      setStatus("Error checking access: " + (err.reason || err.message || String(err)));
+      toast.error("Error checking access: " + (err.reason || err.message || String(err)));
     }
   };
 
   return (
     <div className="App">
-      <h1>HealthChain Demo dApp</h1>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      
+      <div className="container" style={{ maxWidth: 1000, paddingTop: '2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: 'var(--font-size-4xl)', marginBottom: '0.5rem' }}>
+            HealthChain Demo dApp
+          </h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Decentralized marketplace for wearable health data
+          </p>
+        </div>
 
-      <section className="card">
-        <h2>1. Connect</h2>
-        <button onClick={connectWallet}>Connect MetaMask</button>
-        <p><strong>Account:</strong> {account || "-"}</p>
-        <p><strong>Chain ID:</strong> {chainId || "-"}</p>
-        <p><strong>HTC balance:</strong> {htcBalance} HTC</p>
-      </section>
+        {/* 1. Connect Section */}
+        <Card 
+          title="1. Connect Wallet"
+          subtitle="Connect your MetaMask to get started"
+          variant="elevated"
+        >
+          <Button 
+            onClick={connectWallet} 
+            variant="primary"
+            loading={loading && !account}
+            icon={!account && "🦊"}
+          >
+            {account ? "Connected" : "Connect MetaMask"}
+          </Button>
+          
+          {account && (
+            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div>
+                <strong>Account:</strong>{' '}
+                <Badge variant="primary">
+                  {account.slice(0, 6)}...{account.slice(-4)}
+                </Badge>
+              </div>
+              <div>
+                <strong>Chain ID:</strong>{' '}
+                <Badge>{chainId}</Badge>
+              </div>
+              <div>
+                <strong>HTC Balance:</strong>{' '}
+                <Badge variant="success">{parseFloat(htcBalance).toFixed(2)} HTC</Badge>
+              </div>
+            </div>
+          )}
+        </Card>
 
-      <section className="card">
-        <h2>2. Register wearable data</h2>
-        <label>
-          Data content (we hash this):
-          <textarea
-            rows={2}
+        {/* 2. Register Data Section */}
+        <Card 
+          title="2. Register Health Data"
+          subtitle="Register your wearable health data on-chain"
+          variant="elevated"
+        >
+          <Textarea
+            label="Data Content"
+            helperText="This will be hashed and stored on-chain"
             value={dataContent}
             onChange={(e) => setDataContent(e.target.value)}
+            rows={3}
+            fullWidth
           />
-        </label>
-        <label>
-          Data type:
-          <input
-            value={dataType}
-            onChange={(e) => setDataType(e.target.value)}
-          />
-        </label>
-        <label>
-          Off-chain URI:
-          <input
-            value={dataUri}
-            onChange={(e) => setDataUri(e.target.value)}
-          />
-        </label>
-        <button onClick={registerData}>Register data</button>
-        {lastDataId && <p>Last registered dataId: {lastDataId}</p>}
-      </section>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <Input
+              label="Data Type"
+              value={dataType}
+              onChange={(e) => setDataType(e.target.value)}
+              placeholder="e.g., steps, heart_rate"
+              fullWidth
+            />
+            <Input
+              label="Off-chain URI"
+              value={dataUri}
+              onChange={(e) => setDataUri(e.target.value)}
+              placeholder="e.g., ipfs://..."
+              fullWidth
+            />
+          </div>
 
-      <section className="card">
-        <h2>3. Create listing</h2>
-        <label>
-          DataId to list:
-          <input
-            value={listDataId}
-            onChange={(e) => setListDataId(e.target.value)}
-          />
-        </label>
-        <label>
-          Price (HTC):
-          <input
-            value={listPrice}
-            onChange={(e) => setListPrice(e.target.value)}
-          />
-        </label>
-        <button onClick={createListing}>Create listing</button>
-      </section>
+          <Button 
+            onClick={registerData} 
+            variant="secondary"
+            loading={loading}
+            disabled={!account}
+          >
+            Register Data
+          </Button>
 
-      <section className="card">
-        <h2>4. Buy access (use Account #1 in MetaMask)</h2>
-        <p>
-          In MetaMask, switch to your imported Hardhat Account #1, then click
-          Connect again and use this section.
-        </p>
-        <label>
-          DataId to buy:
-          <input
+          {lastDataId && (
+            <div style={{ 
+              marginTop: '1rem', 
+              padding: '1rem', 
+              background: 'var(--color-success-light)',
+              borderRadius: 'var(--border-radius-md)'
+            }}>
+              <strong>✓ Last registered dataId:</strong>{' '}
+              <Badge variant="success">{lastDataId}</Badge>
+            </div>
+          )}
+        </Card>
+
+        {/* 3. Create Listing Section */}
+        <Card 
+          title="3. Create Marketplace Listing"
+          subtitle="List your data for sale"
+          variant="elevated"
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+            <Input
+              label="DataId to List"
+              type="number"
+              value={listDataId}
+              onChange={(e) => setListDataId(e.target.value)}
+              placeholder="Enter dataId"
+              fullWidth
+            />
+            <Input
+              label="Price (HTC)"
+              type="number"
+              value={listPrice}
+              onChange={(e) => setListPrice(e.target.value)}
+              placeholder="100"
+              fullWidth
+            />
+          </div>
+
+          <Button 
+            onClick={createListing}
+            variant="primary"
+            loading={loading}
+            disabled={!account || !listDataId}
+          >
+            Create Listing
+          </Button>
+        </Card>
+
+        {/* 4. Buy Access Section */}
+        <Card 
+          title="4. Buy Data Access"
+          subtitle="Purchase access to health data"
+          variant="elevated"
+        >
+          <p style={{ 
+            color: 'var(--text-secondary)', 
+            fontSize: 'var(--font-size-sm)',
+            marginBottom: '1rem'
+          }}>
+            Switch to a different MetaMask account to buy access to listed data
+          </p>
+
+          <Input
+            label="DataId to Buy"
+            type="number"
             value={buyDataId}
             onChange={(e) => setBuyDataId(e.target.value)}
+            placeholder="Enter dataId"
+            fullWidth
           />
-        </label>
-        <button onClick={buyAccess}>Approve + Buy</button>
-        <button onClick={checkMyAccess}>Check my access</button>
-        {hasAccess !== null && (
-          <p>
-            Can current account access this data?{" "}
-            <strong>{hasAccess ? "YES ✅" : "NO ❌"}</strong>
-          </p>
-        )}
-      </section>
 
-      <section className="card">
-        <h3>Status</h3>
-        <pre>{status}</pre>
-      </section>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Button 
+              onClick={buyAccess}
+              variant="primary"
+              loading={loading}
+              disabled={!account || !buyDataId}
+            >
+              Approve + Buy
+            </Button>
+            <Button 
+              onClick={checkMyAccess}
+              variant="outline"
+              disabled={!account || !buyDataId}
+            >
+              Check Access
+            </Button>
+          </div>
+
+          {hasAccess !== null && (
+            <div style={{ 
+              marginTop: '1rem',
+              padding: '1rem',
+              background: hasAccess ? 'var(--color-success-light)' : 'var(--color-warning-light)',
+              borderRadius: 'var(--border-radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span style={{ fontSize: 'var(--font-size-xl)' }}>
+                {hasAccess ? '✓' : '✕'}
+              </span>
+              <span>
+                <strong>Access Status:</strong>{' '}
+                <Badge variant={hasAccess ? 'success' : 'warning'}>
+                  {hasAccess ? 'GRANTED' : 'DENIED'}
+                </Badge>
+              </span>
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
