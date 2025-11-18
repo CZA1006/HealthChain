@@ -1,4 +1,4 @@
-// src/App.jsx - 优化版本
+// src/App.jsx - 带顶部导航栏的优化版本
 import { useState } from "react";
 import "./App.css";
 import { ethers } from "ethers";
@@ -97,6 +97,21 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Logout 函数
+  const handleLogout = () => {
+    setAccount(null);
+    setChainId(null);
+    setHtcBalance("0");
+    setContracts({
+      provider: null,
+      signer: null,
+      htc: null,
+      registry: null,
+      marketplace: null,
+    });
+    toast.info("Disconnected from wallet");
   };
 
   // Register Data
@@ -244,14 +259,34 @@ function App() {
     <div className="App">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       
-      <div className="container" style={{ maxWidth: 1000, paddingTop: '2rem' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: 'var(--font-size-4xl)', marginBottom: '0.5rem' }}>
-            HealthChain Demo dApp
-          </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Decentralized marketplace for wearable health data
-          </p>
+      {/* 🆕 顶部导航栏 */}
+      <header className="app-header">
+        <div className="header-content">
+          <div className="header-left">
+            <h2 className="app-title">HealthChain</h2>
+          </div>
+          <div className="header-right">
+            {account ? (
+              <>
+                <span className="header-user">
+                  Signed in as: <strong>{account.slice(0, 6)}...{account.slice(-4)}</strong>
+                </span>
+                <Button variant="outline" onClick={handleLogout} size="sm">
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <span className="header-status">Not connected</span>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* 主内容区域 */}
+      <div className="container">
+        <div className="page-header">
+          <h1>HealthChain Demo dApp</h1>
+          <p>Decentralized marketplace for wearable health data</p>
         </div>
 
         {/* 1. Connect Section */}
@@ -270,7 +305,7 @@ function App() {
           </Button>
           
           {account && (
-            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div className="account-info">
               <div>
                 <strong>Account:</strong>{' '}
                 <Badge variant="primary">
@@ -304,7 +339,7 @@ function App() {
             fullWidth
           />
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="input-grid">
             <Input
               label="Data Type"
               value={dataType}
@@ -331,12 +366,7 @@ function App() {
           </Button>
 
           {lastDataId && (
-            <div style={{ 
-              marginTop: '1rem', 
-              padding: '1rem', 
-              background: 'var(--color-success-light)',
-              borderRadius: 'var(--border-radius-md)'
-            }}>
+            <div className="success-box">
               <strong>✓ Last registered dataId:</strong>{' '}
               <Badge variant="success">{lastDataId}</Badge>
             </div>
@@ -349,7 +379,7 @@ function App() {
           subtitle="List your data for sale"
           variant="elevated"
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+          <div className="input-grid">
             <Input
               label="DataId to List"
               type="number"
@@ -384,11 +414,7 @@ function App() {
           subtitle="Purchase access to health data"
           variant="elevated"
         >
-          <p style={{ 
-            color: 'var(--text-secondary)', 
-            fontSize: 'var(--font-size-sm)',
-            marginBottom: '1rem'
-          }}>
+          <p className="helper-text">
             Switch to a different MetaMask account to buy access to listed data
           </p>
 
@@ -401,7 +427,7 @@ function App() {
             fullWidth
           />
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="button-group">
             <Button 
               onClick={buyAccess}
               variant="primary"
@@ -420,16 +446,8 @@ function App() {
           </div>
 
           {hasAccess !== null && (
-            <div style={{ 
-              marginTop: '1rem',
-              padding: '1rem',
-              background: hasAccess ? 'var(--color-success-light)' : 'var(--color-warning-light)',
-              borderRadius: 'var(--border-radius-md)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <span style={{ fontSize: 'var(--font-size-xl)' }}>
+            <div className={hasAccess ? 'success-box' : 'warning-box'}>
+              <span style={{ fontSize: '1.5rem' }}>
                 {hasAccess ? '✓' : '✕'}
               </span>
               <span>
