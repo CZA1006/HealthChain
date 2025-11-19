@@ -1,84 +1,228 @@
-/* src/components/Card.css */
+/* src/components/Card.css - 深色主题优化版 */
+
+/* ===== 基础卡片样式 ===== */
 .card {
-  background: var(--bg-primary);
-  border-radius: var(--border-radius-lg);
-  transition: all var(--transition-base);
+  background: rgba(30, 41, 59, 0.6) !important;
+  backdrop-filter: blur(16px) saturate(180%);
+  border-radius: 20px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  position: relative;
 }
 
-/* ===== Variants ===== */
+/* ===== 变体样式 ===== */
 .card-default {
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(148, 163, 184, 0.15);
 }
 
 .card-outlined {
-  border: 2px solid var(--border-color);
+  border: 2px solid rgba(148, 163, 184, 0.2);
 }
 
 .card-elevated {
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(59, 130, 246, 0.05) inset;
 }
 
-/* ===== Padding ===== */
+/* ===== 发光边框效果（elevated 变体专属） ===== */
+.card-elevated::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, 
+    rgba(59, 130, 246, 0.3), 
+    rgba(139, 92, 246, 0.3),
+    rgba(59, 130, 246, 0.3)
+  );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 0;
+}
+
+.card-elevated:hover::before {
+  opacity: 1;
+}
+
+/* ===== 光晕效果（elevated 变体专属） ===== */
+.card-elevated::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.card-elevated:hover::after {
+  transform: translate(-50%, -50%) scale(2);
+}
+
+/* ===== 内边距变体 ===== */
 .card-padding-sm .card-body {
-  padding: var(--space-md);
+  padding: 1.5rem;
 }
 
 .card-padding-md .card-body {
-  padding: var(--space-lg);
+  padding: 2rem;
 }
 
 .card-padding-lg .card-body {
-  padding: var(--space-xl);
+  padding: 2.5rem;
 }
 
 .card-padding-sm .card-header,
 .card-padding-sm .card-footer {
-  padding: var(--space-md);
+  padding: 1.5rem;
 }
 
 .card-padding-md .card-header,
 .card-padding-md .card-footer {
-  padding: var(--space-lg);
+  padding: 2rem;
 }
 
 .card-padding-lg .card-header,
 .card-padding-lg .card-footer {
-  padding: var(--space-xl);
+  padding: 2.5rem;
 }
 
-/* ===== Hoverable ===== */
+/* ===== 可悬浮卡片 ===== */
 .card-hoverable {
   cursor: pointer;
 }
 
 .card-hoverable:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
-  border-color: var(--color-primary);
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(59, 130, 246, 0.2) inset,
+    0 0 40px rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(30, 41, 59, 0.8) !important;
 }
 
-/* ===== Header ===== */
+/* ===== 卡片头部 ===== */
 .card-header {
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  position: relative;
+  z-index: 1;
 }
 
 .card-title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f1f5f9 !important;
+  margin: 0 0 0.75rem 0;
+  letter-spacing: -0.02em;
 }
 
 .card-subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin: var(--space-xs) 0 0 0;
+  font-size: 0.9375rem;
+  color: #cbd5e1 !important;
+  margin: 0;
+  line-height: 1.6;
 }
 
-/* ===== Footer ===== */
+/* ===== 卡片主体 ===== */
+.card-body {
+  position: relative;
+  z-index: 1;
+}
+
+/* 🔥 确保卡片内所有文字都是浅色 */
+.card-body p,
+.card-body span:not(.badge):not(.badge-primary):not(.badge-success):not(.badge-warning),
+.card-body label,
+.card-body div {
+  color: #cbd5e1 !important;
+}
+
+.card-body h1,
+.card-body h2,
+.card-body h3,
+.card-body h4,
+.card-body h5,
+.card-body h6 {
+  color: #f1f5f9 !important;
+}
+
+/* ===== 卡片底部 ===== */
 .card-footer {
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(15, 23, 42, 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== 响应式设计 ===== */
+@media (max-width: 768px) {
+  .card-padding-sm .card-body,
+  .card-padding-sm .card-header,
+  .card-padding-sm .card-footer {
+    padding: 1.25rem;
+  }
+
+  .card-padding-md .card-body,
+  .card-padding-md .card-header,
+  .card-padding-md .card-footer {
+    padding: 1.5rem;
+  }
+
+  .card-padding-lg .card-body,
+  .card-padding-lg .card-header,
+  .card-padding-lg .card-footer {
+    padding: 2rem;
+  }
+
+  .card-title {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    border-radius: 16px;
+  }
+
+  .card-padding-sm .card-body,
+  .card-padding-sm .card-header,
+  .card-padding-sm .card-footer {
+    padding: 1rem;
+  }
+
+  .card-padding-md .card-body,
+  .card-padding-md .card-header,
+  .card-padding-md .card-footer {
+    padding: 1.25rem;
+  }
+
+  .card-padding-lg .card-body,
+  .card-padding-lg .card-header,
+  .card-padding-lg .card-footer {
+    padding: 1.5rem;
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+  }
+
+  .card-subtitle {
+    font-size: 0.875rem;
+  }
 }

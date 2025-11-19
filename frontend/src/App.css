@@ -1,4 +1,4 @@
-/* src/App.css - 增强版全屏优化（终极版） */
+/* src/App.css - 增强版全屏优化（终极版 + 深色主题修复） */
 
 /* ========================================
    1. 全局重置与基础增强
@@ -80,7 +80,6 @@ body {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 🆕 导航栏滚动效果 */
 .app-header.scrolled {
   background: rgba(15, 23, 42, 0.95);
   box-shadow: 
@@ -106,8 +105,8 @@ body {
 }
 
 .app-title {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
   background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #ec4899 100%);
   background-size: 200% 200%;
   animation: gradientFlow 3s ease infinite;
@@ -117,15 +116,14 @@ body {
   margin: 0;
   white-space: nowrap;
   position: relative;
+  letter-spacing: -0.02em;
 }
 
-/* 🆕 标题渐变流动动画 */
 @keyframes gradientFlow {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
 
-/* 🆕 标题悬浮发光效果 */
 .app-title::after {
   content: '';
   position: absolute;
@@ -181,7 +179,6 @@ body {
   gap: 0.5rem;
 }
 
-/* 🆕 状态指示灯 */
 .header-status::before {
   content: '';
   width: 8px;
@@ -203,7 +200,7 @@ body {
 }
 
 /* ========================================
-   4. 主容器 - 淡入动画
+   4. 主容器
 ======================================== */
 
 .container {
@@ -216,7 +213,6 @@ body {
   animation: fadeInUp 0.8s ease;
 }
 
-/* 🆕 页面淡入动画 */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -229,7 +225,7 @@ body {
 }
 
 /* ========================================
-   5. 页面头部 - 增强版
+   5. 页面头部
 ======================================== */
 
 .page-header {
@@ -249,22 +245,10 @@ body {
   background-clip: text;
   margin-bottom: 1rem;
   letter-spacing: -0.03em;
-  position: relative;
-  display: inline-block;
 }
 
-/* 🆕 标题发光效果 */
-.page-header h1::before {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: -1;
-  filter: blur(20px);
-  opacity: 0.5;
-}
-
-.page-header p {
+.page-header p,
+.page-header .page-subtitle {
   color: #cbd5e1;
   font-size: 1.25rem;
   font-weight: 400;
@@ -274,11 +258,11 @@ body {
 }
 
 /* ========================================
-   6. 卡片样式 - 超级增强版
+   6. 卡片样式 - 深色主题统一
 ======================================== */
 
 .card {
-  background: rgba(30, 41, 59, 0.6);
+  background: rgba(30, 41, 59, 0.6) !important;
   backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(148, 163, 184, 0.15);
   border-radius: 20px;
@@ -293,7 +277,6 @@ body {
   overflow: hidden;
 }
 
-/* 🆕 卡片发光边框 */
 .card::before {
   content: '';
   position: absolute;
@@ -321,7 +304,6 @@ body {
   opacity: 1;
 }
 
-/* 🆕 卡片光晕效果 */
 .card::after {
   content: '';
   position: absolute;
@@ -333,6 +315,7 @@ body {
   transform: translate(-50%, -50%) scale(0);
   transition: transform 0.6s ease;
   pointer-events: none;
+  z-index: 0;
 }
 
 .card:hover::after {
@@ -346,50 +329,60 @@ body {
     0 0 0 1px rgba(59, 130, 246, 0.2) inset,
     0 0 40px rgba(59, 130, 246, 0.1);
   border-color: rgba(59, 130, 246, 0.3);
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(30, 41, 59, 0.8) !important;
 }
 
-/* 🆕 卡片标题编号徽章 */
+/* 🔥 卡片内所有文字统一浅色 */
+.card h1,
 .card h2,
-.card h3 {
-  color: #f1f5f9;
+.card h3,
+.card h4,
+.card h5,
+.card h6,
+.card .card-title {
+  color: #f1f5f9 !important;
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 0.75rem;
   letter-spacing: -0.02em;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
   position: relative;
   z-index: 1;
 }
 
-.card h2::before,
-.card h3::before {
-  content: attr(data-number);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.card-subtitle {
-  color: #cbd5e1;
+.card-subtitle,
+.card p,
+.card span:not(.badge):not(.badge-primary):not(.badge-success):not(.badge-warning) {
+  color: #cbd5e1 !important;
   font-size: 0.9375rem;
-  margin-bottom: 2rem;
   line-height: 1.6;
   position: relative;
   z-index: 1;
 }
 
+.card label {
+  color: #cbd5e1 !important;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.card .helper-text {
+  color: #94a3b8 !important;
+  font-size: 0.8125rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+  font-style: italic;
+  position: relative;
+  z-index: 1;
+}
+
 /* ========================================
-   7. 表单元素 - 增强版
+   7. 表单元素
 ======================================== */
 
 .input-grid {
@@ -401,37 +394,28 @@ body {
   z-index: 1;
 }
 
-label {
-  display: block;
-  color: #cbd5e1;
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-bottom: 0.625rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 input[type="text"],
 input[type="number"],
-textarea {
+textarea,
+select {
   width: 100%;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.6) !important;
   backdrop-filter: blur(10px);
   border: 2px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
   padding: 1rem 1.25rem;
-  color: #f1f5f9;
+  color: #f1f5f9 !important;
   font-family: inherit;
   font-size: 0.9375rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 🆕 输入框聚焦发光效果 */
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   outline: none;
   border-color: #3b82f6;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.8) !important;
   box-shadow: 
     0 0 0 4px rgba(59, 130, 246, 0.15),
     0 8px 16px rgba(59, 130, 246, 0.1);
@@ -440,7 +424,7 @@ textarea:focus {
 
 input::placeholder,
 textarea::placeholder {
-  color: #64748b;
+  color: #64748b !important;
   font-style: italic;
 }
 
@@ -450,16 +434,8 @@ textarea {
   line-height: 1.6;
 }
 
-.helper-text {
-  color: #94a3b8;
-  font-size: 0.8125rem;
-  margin-bottom: 1rem;
-  line-height: 1.5;
-  font-style: italic;
-}
-
 /* ========================================
-   8. 按钮样式 - 超级增强版
+   8. 按钮样式
 ======================================== */
 
 button,
@@ -482,7 +458,6 @@ button,
   z-index: 1;
 }
 
-/* 🆕 按钮发光效果 */
 button::before,
 .btn::before {
   content: '';
@@ -495,6 +470,7 @@ button::before,
   background: rgba(255, 255, 255, 0.2);
   transform: translate(-50%, -50%);
   transition: width 0.6s, height 0.6s;
+  z-index: -1;
 }
 
 button:hover::before,
@@ -574,7 +550,7 @@ button:disabled {
 }
 
 /* ========================================
-   9. Badge 徽章 - 增强版
+   9. Badge 徽章
 ======================================== */
 
 .badge {
@@ -595,27 +571,27 @@ button:disabled {
 
 .badge-primary {
   background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
+  color: #93c5fd !important;
   border: 1px solid rgba(59, 130, 246, 0.4);
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 .badge-success {
   background: rgba(16, 185, 129, 0.2);
-  color: #6ee7b7;
+  color: #6ee7b7 !important;
   border: 1px solid rgba(16, 185, 129, 0.4);
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
 .badge-warning {
   background: rgba(245, 158, 11, 0.2);
-  color: #fcd34d;
+  color: #fcd34d !important;
   border: 1px solid rgba(245, 158, 11, 0.4);
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
 }
 
 /* ========================================
-   10. 信息提示框 - 增强版
+   10. 信息提示框
 ======================================== */
 
 .account-info {
@@ -643,7 +619,7 @@ button:disabled {
 }
 
 .account-info strong {
-  color: #cbd5e1;
+  color: #cbd5e1 !important;
   min-width: 120px;
   font-weight: 600;
 }
@@ -714,7 +690,7 @@ button:disabled {
 }
 
 /* ========================================
-   11. Toast 通知 - 增强版
+   11. Toast 通知
 ======================================== */
 
 .toast-container {
@@ -764,4 +740,114 @@ button:disabled {
   top: 0;
   bottom: 0;
   width: 4px;
+}
+
+.toast.success::before {
+  background: #10b981;
+}
+
+.toast.error::before {
+  background: #ef4444;
+}
+
+.toast.info::before {
+  background: #3b82f6;
+}
+
+.toast.warning::before {
+  background: #f59e0b;
+}
+
+/* ========================================
+   12. 响应式设计
+======================================== */
+
+@media (max-width: 1024px) {
+  .header-content {
+    padding: 1rem 2rem;
+  }
+
+  .container {
+    padding: 2rem 1.5rem;
+  }
+
+  .card {
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    padding: 1rem 1.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .container {
+    padding: 1.5rem 1rem;
+  }
+
+  .card {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .input-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  .button-group button {
+    width: 100%;
+  }
+
+  .toast-container {
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-title {
+    font-size: 1.5rem;
+  }
+
+  .header-user {
+    font-size: 0.8125rem;
+  }
+
+  .container {
+    padding: 1rem 0.75rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  button,
+  .btn {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.9375rem;
+  }
+}
+
+@media (min-width: 1920px) {
+  .container {
+    max-width: 1800px;
+  }
 }
