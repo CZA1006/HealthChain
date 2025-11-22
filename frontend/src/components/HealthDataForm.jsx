@@ -88,8 +88,31 @@ function HealthDataForm({ onSubmit, onCancel }) {
       return;
     }
 
+    // Generate dataHash and encryptedKey
+    const timestamp = Date.now();
+    const dataString = JSON.stringify({
+      ...healthData,
+      timestamp,
+      account: window.ethereum?.selectedAddress
+    });
+    
+    // Generate a unique data hash
+    const dataHash = `health_data_${timestamp}_${Math.random().toString(36).substring(7)}`;
+    
+    // Simulate IPFS hash for encrypted key
+    const encryptedKey = `ipfs://Qm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+
+    // Include all required fields
+    const completeHealthData = {
+      ...healthData,
+      dataHash: dataHash,
+      encryptedKey: encryptedKey,
+    };
+
+    console.log('Submitting health data:', completeHealthData);
+
     setErrors([]);
-    onSubmit(healthData);
+    onSubmit(completeHealthData);
   };
 
   return (

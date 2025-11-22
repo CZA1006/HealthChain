@@ -73,6 +73,74 @@
   font-style: italic;
 }
 
+/* Potential Reward Section */
+.potential-reward {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, 
+    rgba(234, 179, 8, 0.15),
+    rgba(249, 115, 22, 0.15)
+  );
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 12px;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(234, 179, 8, 0.4);
+  }
+}
+
+.potential-reward .reward-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(234, 179, 8, 0.2);
+  border-radius: 10px;
+  animation: bounce-icon 1.5s ease-in-out infinite;
+}
+
+@keyframes bounce-icon {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.potential-reward .reward-text {
+  flex: 1;
+}
+
+.potential-reward .reward-label {
+  color: #fbbf24 !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.25rem 0;
+}
+
+.potential-reward .reward-amount {
+  color: #fef3c7 !important;
+  font-size: 1.125rem;
+  font-weight: 800;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(234, 179, 8, 0.3);
+}
+
 /* Metrics Grid */
 .health-metrics-grid {
   display: grid;
@@ -184,6 +252,64 @@
   transform: translateY(-2px);
 }
 
+/* Reward Button */
+.action-btn-reward {
+  background: linear-gradient(135deg, 
+    rgba(234, 179, 8, 0.9) 0%, 
+    rgba(249, 115, 22, 0.9) 100%
+  );
+  color: white;
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.4);
+  font-weight: 700;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn-reward::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shine 3s ease-in-out infinite;
+}
+
+@keyframes shine {
+  0%, 100% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  50% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+.action-btn-reward:hover:not(.disabled) {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(234, 179, 8, 0.5);
+  background: linear-gradient(135deg, 
+    rgba(234, 179, 8, 1) 0%, 
+    rgba(249, 115, 22, 1) 100%
+  );
+}
+
+.action-btn-reward.disabled {
+  background: rgba(100, 116, 139, 0.3);
+  color: #64748b;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.action-btn-reward.disabled::before {
+  display: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .health-metrics-grid {
@@ -208,5 +334,10 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  .potential-reward {
+    flex-direction: column;
+    text-align: center;
   }
 }

@@ -1,5 +1,14 @@
-// src/contracts/addresses.js
+// Auto-generated contract addresses
+// Deployed at: 2025-11-22T06:31:24.042Z
 
 export const HTC_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 export const REGISTRY_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 export const MARKETPLACE_ADDRESS = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+export const MOVE_TO_EARN_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
+
+export const CONTRACT_ADDRESSES = {
+  healthChainToken: HTC_ADDRESS,
+  dataRegistry: REGISTRY_ADDRESS,
+  marketplace: MARKETPLACE_ADDRESS,
+  moveToEarn: MOVE_TO_EARN_ADDRESS,
+};

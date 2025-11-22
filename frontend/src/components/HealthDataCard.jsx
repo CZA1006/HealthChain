@@ -4,8 +4,36 @@ import { HealthDataSimulator } from '../utils/healthDataSimulator';
 import Badge from './Badge';
 import './HealthDataCard.css';
 
-function HealthDataCard({ data, dataId, showActions = false, onList, onDelete }) {
+function HealthDataCard({ 
+  data, 
+  dataId, 
+  showActions = false, 
+  onList, 
+  onDelete,
+  onClaimReward,
+  canClaimReward = false,
+  claimLoading = false,
+  alreadyClaimed = false
+}) {
   const formatted = HealthDataSimulator.formatHealthData(data);
+
+  // Calculate potential reward based on steps
+  const calculatePotentialReward = () => {
+    const steps = parseInt(data.steps) || 0;
+    
+    if (steps < 3000) {
+      return { amount: 0, message: 'Need 3,000+ steps' };
+    }
+    
+    if (steps > 20000) {
+      return { amount: 200, message: 'Max reward (20K steps)' };
+    }
+    
+    const reward = Math.floor(steps / 1000) * 10;
+    return { amount: reward, message: `${reward} HTC available` };
+  };
+
+  const potentialReward = calculatePotentialReward();
 
   // Get badge variant based on metric type
   const getTypeVariant = (type) => {
@@ -48,6 +76,17 @@ function HealthDataCard({ data, dataId, showActions = false, onList, onDelete })
           </p>
         )}
       </div>
+
+      {/* Potential Reward Display */}
+      {showActions && potentialReward.amount > 0 && (
+        <div className="potential-reward">
+          <div className="reward-icon">🎁</div>
+          <div className="reward-text">
+            <p className="reward-label">Move-to-Earn Reward</p>
+            <p className="reward-amount">{potentialReward.message}</p>
+          </div>
+        </div>
+      )}
 
       <div className="health-metrics-grid">
         <div className="metric-item">
@@ -101,6 +140,25 @@ function HealthDataCard({ data, dataId, showActions = false, onList, onDelete })
 
       {showActions && (
         <div className="health-card-actions">
+          {/* Claim Reward Button */}
+          {onClaimReward && potentialReward.amount > 0 && (
+            <button 
+              onClick={() => onClaimReward(dataId)} 
+              className={`action-btn action-btn-reward ${!canClaimReward || claimLoading || alreadyClaimed ? 'disabled' : ''}`}
+              disabled={!canClaimReward || claimLoading || alreadyClaimed}
+            >
+              {claimLoading ? (
+                <>⏳ Claiming...</>
+              ) : alreadyClaimed ? (
+                <>✅ Claimed</>
+              ) : canClaimReward ? (
+                <>🎁 Claim Reward</>
+              ) : (
+                <>⏰ Cooldown Active</>
+              )}
+            </button>
+          )}
+          
           {onList && (
             <button onClick={() => onList(dataId)} className="action-btn action-btn-primary">
               📝 List on Marketplace

@@ -1,5 +1,5 @@
-// src/App.jsx - With Health Data Integration
-import { useState } from "react";
+// src/App.jsx - With Health Data Integration and Move-to-Earn
+import { useState, useEffect } from "react";
 import "./App.css";
 import { ethers } from "ethers";
 
@@ -7,11 +7,13 @@ import {
   HTC_ADDRESS,
   REGISTRY_ADDRESS,
   MARKETPLACE_ADDRESS,
+  MOVE_TO_EARN_ADDRESS,
 } from "./contracts/addresses";
 
 import HTC_ARTIFACT from "./contracts/HealthChainToken.json";
 import REGISTRY_ARTIFACT from "./contracts/DataRegistry.json";
 import MARKET_ARTIFACT from "./contracts/Marketplace.json";
+import MOVE_TO_EARN_ARTIFACT from "./contracts/MoveToEarn.json";
 
 // Import components
 import Card from './components/Card';
@@ -22,6 +24,7 @@ import Badge from './components/Badge';
 import LoadingSpinner from './components/LoadingSpinner';
 import HealthDataForm from './components/HealthDataForm';
 import HealthDataCard from './components/HealthDataCard';
+import MoveToEarnCard from './components/MoveToEarnCard';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
 import { HealthDataSimulator } from './utils/healthDataSimulator';
@@ -36,6 +39,11 @@ function App() {
   const [showHealthForm, setShowHealthForm] = useState(false);
   const [myHealthData, setMyHealthData] = useState([]);
   const [loadingMyData, setLoadingMyData] = useState(false);
+
+  // Move-to-Earn state
+  const [canClaimReward, setCanClaimReward] = useState({});
+  const [claimLoading, setClaimLoading] = useState({});
+  const [claimedDataIds, setClaimedDataIds] = useState(new Set());
 
   // Original data fields (for simple registration)
   const [dataContent, setDataContent] = useState("wearable steps data for sale");
@@ -55,6 +63,7 @@ function App() {
     htc: null,
     registry: null,
     marketplace: null,
+    moveToEarn: null,
   });
 
   // Use Toast Hook
@@ -91,10 +100,15 @@ function App() {
         MARKET_ARTIFACT.abi ?? MARKET_ARTIFACT,
         signer
       );
+      const moveToEarn = new ethers.Contract(
+        MOVE_TO_EARN_ADDRESS,
+        MOVE_TO_EARN_ARTIFACT.abi ?? MOVE_TO_EARN_ARTIFACT,
+        signer
+      );
 
       const bal = await htc.balanceOf(addr);
 
-      setContracts({ provider, signer, htc, registry, marketplace });
+      setContracts({ provider, signer, htc, registry, marketplace, moveToEarn });
       setAccount(addr);
       setChainId(net.chainId.toString());
       setHtcBalance(ethers.formatUnits(bal, 18));
@@ -102,7 +116,7 @@ function App() {
       toast.success("Connected to MetaMask successfully!");
       
       // Load user's health data
-      loadMyHealthData(registry, addr);
+      loadMyHealthData(registry, addr, moveToEarn);
     } catch (err) {
       console.error(err);
       toast.error("Error connecting: " + (err.reason || err.message || String(err)));
@@ -112,11 +126,12 @@ function App() {
   };
 
   // Load user's health data
-  const loadMyHealthData = async (registryContract, userAddress) => {
+  const loadMyHealthData = async (registryContract, userAddress, moveToEarnContract) => {
     setLoadingMyData(true);
     try {
       const registry = registryContract || contracts.registry;
       const addr = userAddress || account;
+      const moveToEarn = moveToEarnContract || contracts.moveToEarn;
 
       if (!registry || !addr) return;
 
@@ -153,6 +168,11 @@ function App() {
       
       setMyHealthData(healthDataList);
       
+      // Check claim eligibility for all data
+      if (moveToEarn && healthDataList.length > 0) {
+        await checkCanClaimAll(healthDataList, moveToEarn, addr);
+      }
+      
       if (healthDataList.length > 0) {
         toast.success(`Loaded ${healthDataList.length} health data records`);
       }
@@ -163,18 +183,98 @@ function App() {
     }
   };
 
+  // Check if user can claim rewards for all data
+  const checkCanClaimAll = async (dataList, moveToEarnContract, userAddress) => {
+    try {
+      const moveToEarn = moveToEarnContract || contracts.moveToEarn;
+      const addr = userAddress || account;
+      
+      if (!moveToEarn || !addr) return;
+
+      const claimStatus = {};
+      
+      for (const data of dataList) {
+        try {
+          const canClaim = await moveToEarn.canClaimReward(addr, data.dataId);
+          claimStatus[data.dataId] = canClaim;
+        } catch (err) {
+          console.error(`Error checking claim for data ${data.dataId}:`, err);
+          claimStatus[data.dataId] = false;
+        }
+      }
+      
+      setCanClaimReward(claimStatus);
+    } catch (err) {
+      console.error('Error checking claim eligibility:', err);
+    }
+  };
+
+  // Handle reward claim
+  const handleClaimReward = async (dataId) => {
+    const { moveToEarn, htc } = contracts;
+    if (!moveToEarn || !account) {
+      toast.error("Connect wallet first");
+      return;
+    }
+
+    try {
+      setClaimLoading(prev => ({ ...prev, [dataId]: true }));
+
+      // Get the health data
+      const data = myHealthData.find(d => d.dataId === dataId);
+      if (!data) {
+        throw new Error('Data not found');
+      }
+
+      toast.info("Claiming reward...");
+
+      // Claim reward
+      const tx = await moveToEarn.claimReward(dataId, data.steps);
+      console.log('Claiming reward...', tx.hash);
+      
+      await tx.wait();
+      console.log('Reward claimed successfully!');
+
+      // Mark as claimed
+      setClaimedDataIds(prev => new Set([...prev, dataId]));
+      
+      // Update balance
+      const bal = await htc.balanceOf(account);
+      setHtcBalance(ethers.formatUnits(bal, 18));
+
+      // Update claim status
+      setCanClaimReward(prev => ({ ...prev, [dataId]: false }));
+
+      toast.success(`✅ Reward claimed successfully for Health Data #${dataId}!`);
+    } catch (err) {
+      console.error('Error claiming reward:', err);
+      toast.error('Failed to claim reward: ' + (err.reason || err.message || String(err)));
+    } finally {
+      setClaimLoading(prev => ({ ...prev, [dataId]: false }));
+    }
+  };
+
+  // Handle reward claimed from MoveToEarnCard
+  const handleRewardClaimed = () => {
+    loadMyHealthData();
+  };
+
   // Logout
   const handleLogout = () => {
     setAccount(null);
     setChainId(null);
     setHtcBalance("0");
     setMyHealthData([]);
+    setCanClaimReward({});
+    setClaimLoading({});
+    setClaimedDataIds(new Set());
     setContracts({
       provider: null,
       signer: null,
       htc: null,
       registry: null,
       marketplace: null,
+      moveToEarn: null,
     });
     toast.info("Disconnected from wallet");
   };
@@ -189,31 +289,51 @@ function App() {
         return;
       }
 
-      // Generate data hash from health data
-      const dataString = HealthDataSimulator.generateDataHash(healthData);
-      const dataHash = ethers.keccak256(ethers.toUtf8Bytes(dataString));
+      console.log('=== Registering Health Data ===');
+      console.log('Received healthData:', healthData);
+
+      // Validate required fields
+      if (!healthData.dataHash) {
+        throw new Error('dataHash is required');
+      }
+
+      // Convert dataHash string to bytes32
+      const dataHashBytes32 = ethers.id(healthData.dataHash);
       
-      // Create metrics struct
+      // Prepare HealthMetrics struct
       const metrics = {
-        steps: healthData.steps,
-        heartRate: healthData.heartRate,
-        sleepMinutes: healthData.sleepMinutes,
-        calories: healthData.calories,
-        distance: healthData.distance,
-        activeMinutes: healthData.activeMinutes,
-        metricType: healthData.metricType,
+        steps: BigInt(healthData.steps || 0),
+        heartRate: BigInt(healthData.heartRate || 0),
+        sleepMinutes: BigInt(healthData.sleepMinutes || 0),
+        calories: BigInt(healthData.calories || 0),
+        distance: BigInt(healthData.distance || 0),
+        activeMinutes: BigInt(healthData.activeMinutes || 0),
+        metricType: healthData.metricType || 'daily'
       };
+
+      // Use provided encryptedKey or generate default
+      const encryptedKey = healthData.encryptedKey || `ipfs://health_data_${Date.now()}`;
+      const dataTypeStr = 'health_data';
+
+      console.log('Calling contract with:', {
+        dataHash: dataHashBytes32,
+        dataType: dataTypeStr,
+        uri: encryptedKey,
+        metrics: metrics
+      });
 
       toast.info("Registering health data on blockchain...");
 
       const tx = await registry.registerDataWithMetrics(
-        dataHash,
-        "health_metrics",
-        `health://${healthData.metricType}`,
-        metrics
+        dataHashBytes32,   // bytes32 dataHash
+        dataTypeStr,       // string dataType
+        encryptedKey,      // string uri
+        metrics            // HealthMetrics struct
       );
-      
+
+      console.log('Transaction sent:', tx.hash);
       await tx.wait();
+      console.log('Transaction confirmed!');
 
       let newId = 1;
       try {
@@ -227,7 +347,7 @@ function App() {
       setListDataId(String(newId));
       setShowHealthForm(false);
 
-      toast.success(`Health data registered successfully! DataId: ${newId}`);
+      toast.success(`✅ Health data registered successfully! DataId: ${newId}`);
       
       // Reload health data
       await loadMyHealthData();
@@ -387,6 +507,26 @@ function App() {
     toast.info(`Ready to list Health Data #${dataId}. Set your price below.`);
   };
 
+  // Listen for account changes
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length > 0) {
+          handleLogout();
+          toast.info("Account changed. Please reconnect.");
+        } else {
+          handleLogout();
+        }
+      });
+    }
+    
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeAllListeners('accountsChanged');
+      }
+    };
+  }, []);
+
   return (
     <div className="App">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
@@ -395,13 +535,18 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="header-left">
-            <h2 className="app-title">HealthChain</h2>
+            <h2 className="app-title">🏥 HealthChain</h2>
+            <Badge variant="success">v2.0</Badge>
           </div>
           <div className="header-right">
             {account ? (
               <>
+                <div className="header-balance">
+                  <span className="balance-label">Balance:</span>
+                  <Badge variant="success">{parseFloat(htcBalance).toFixed(2)} HTC</Badge>
+                </div>
                 <span className="header-user">
-                  Signed in as: <strong>{account.slice(0, 6)}...{account.slice(-4)}</strong>
+                  <strong>{account.slice(0, 6)}...{account.slice(-4)}</strong>
                 </span>
                 <Button variant="outline" onClick={handleLogout} size="sm">
                   Logout
@@ -418,8 +563,18 @@ function App() {
       <div className="container">
         <div className="page-header">
           <h1>HealthChain Demo dApp</h1>
-          <p>Decentralized marketplace for wearable health data</p>
+          <p>Decentralized marketplace for wearable health data with Move-to-Earn rewards</p>
         </div>
+
+        {/* 0. Move-to-Earn Section */}
+        {account && contracts.moveToEarn && (
+          <MoveToEarnCard 
+            moveToEarn={contracts.moveToEarn}
+            account={account}
+            htc={contracts.htc}
+            onRewardClaimed={handleRewardClaimed}
+          />
+        )}
 
         {/* 1. Connect Section */}
         <Card 
@@ -504,6 +659,10 @@ function App() {
                     dataId={data.dataId}
                     showActions={true}
                     onList={handleListHealthData}
+                    onClaimReward={handleClaimReward}
+                    canClaimReward={canClaimReward[data.dataId]}
+                    claimLoading={claimLoading[data.dataId]}
+                    alreadyClaimed={claimedDataIds.has(data.dataId)}
                   />
                 ))}
               </div>
