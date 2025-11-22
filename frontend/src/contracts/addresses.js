@@ -1,5 +1,5 @@
 // Auto-generated contract addresses
-// Deployed at: 2025-11-22T06:31:24.042Z
+// Deployed at: 2025-11-22T07:09:04.891Z
 
 export const HTC_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 export const REGISTRY_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
