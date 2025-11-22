@@ -1,0 +1,218 @@
+/* frontend/src/components/HealthDataForm.css */
+
+.health-data-form {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.health-data-form h3 {
+  color: #f1f5f9 !important;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Quick Generate Section */
+.quick-generate {
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  transition: all 0.3s ease;
+}
+
+.quick-generate:hover {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.quick-generate p {
+  color: #cbd5e1 !important;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.generate-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.btn-generate {
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-generate::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-generate:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.btn-generate:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-generate:active {
+  transform: translateY(-1px) scale(1);
+}
+
+/* Error Messages */
+.error-messages {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.error-message {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5 !important;
+  padding: 0.875rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: slideInLeft 0.3s ease;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Form Grid */
+.health-data-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Form Field */
+.health-data-form .form-field {
+  margin-bottom: 1.5rem;
+}
+
+.health-data-form .form-field label {
+  display: block;
+  color: #cbd5e1 !important;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.health-data-form .form-field select {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  color: #f1f5f9 !important;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.health-data-form .form-field select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(15, 23, 42, 0.8) !important;
+  box-shadow: 
+    0 0 0 4px rgba(59, 130, 246, 0.15),
+    0 8px 16px rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px);
+}
+
+.health-data-form .form-field select option {
+  background: #1e293b;
+  color: #f1f5f9;
+  padding: 0.75rem;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.form-actions button {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .health-data-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .generate-buttons {
+    flex-direction: column;
+  }
+
+  .btn-generate {
+    width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .quick-generate {
+    padding: 1rem;
+  }
+
+  .health-data-form h3 {
+    font-size: 1.25rem;
+  }
+}

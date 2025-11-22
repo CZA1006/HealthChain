@@ -1,4 +1,4 @@
-// src/App.jsx - 带顶部导航栏的优化版本
+// src/App.jsx - With Health Data Integration
 import { useState } from "react";
 import "./App.css";
 import { ethers } from "ethers";
@@ -13,15 +13,18 @@ import HTC_ARTIFACT from "./contracts/HealthChainToken.json";
 import REGISTRY_ARTIFACT from "./contracts/DataRegistry.json";
 import MARKET_ARTIFACT from "./contracts/Marketplace.json";
 
-// 导入新组件
+// Import components
 import Card from './components/Card';
 import Button from './components/Button';
 import Input from './components/Input';
 import Textarea from './components/Textarea';
 import Badge from './components/Badge';
 import LoadingSpinner from './components/LoadingSpinner';
+import HealthDataForm from './components/HealthDataForm';
+import HealthDataCard from './components/HealthDataCard';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
+import { HealthDataSimulator } from './utils/healthDataSimulator';
 
 function App() {
   const [account, setAccount] = useState(null);
@@ -29,6 +32,12 @@ function App() {
   const [htcBalance, setHtcBalance] = useState("0");
   const [loading, setLoading] = useState(false);
 
+  // Health data state
+  const [showHealthForm, setShowHealthForm] = useState(false);
+  const [myHealthData, setMyHealthData] = useState([]);
+  const [loadingMyData, setLoadingMyData] = useState(false);
+
+  // Original data fields (for simple registration)
   const [dataContent, setDataContent] = useState("wearable steps data for sale");
   const [dataType, setDataType] = useState("steps");
   const [dataUri, setDataUri] = useState("ipfs://steps-demo");
@@ -48,7 +57,7 @@ function App() {
     marketplace: null,
   });
 
-  // 使用 Toast Hook
+  // Use Toast Hook
   const { toasts, toast, removeToast } = useToast();
 
   // Connect Wallet
@@ -91,6 +100,9 @@ function App() {
       setHtcBalance(ethers.formatUnits(bal, 18));
       
       toast.success("Connected to MetaMask successfully!");
+      
+      // Load user's health data
+      loadMyHealthData(registry, addr);
     } catch (err) {
       console.error(err);
       toast.error("Error connecting: " + (err.reason || err.message || String(err)));
@@ -99,11 +111,64 @@ function App() {
     }
   };
 
-  // Logout 函数
+  // Load user's health data
+  const loadMyHealthData = async (registryContract, userAddress) => {
+    setLoadingMyData(true);
+    try {
+      const registry = registryContract || contracts.registry;
+      const addr = userAddress || account;
+
+      if (!registry || !addr) return;
+
+      // Get user's data IDs
+      const dataIds = await registry.getUserDataIds(addr);
+      
+      const healthDataList = [];
+      
+      for (let i = 0; i < dataIds.length; i++) {
+        const dataId = Number(dataIds[i]);
+        
+        try {
+          // Get health metrics
+          const metrics = await registry.getHealthMetrics(dataId);
+          
+          // Only include data with health metrics
+          if (metrics.hasMetrics) {
+            healthDataList.push({
+              dataId: dataId,
+              steps: Number(metrics.steps),
+              heartRate: Number(metrics.heartRate),
+              sleepMinutes: Number(metrics.sleepMinutes),
+              calories: Number(metrics.calories),
+              distance: Number(metrics.distance),
+              activeMinutes: Number(metrics.activeMinutes),
+              metricType: metrics.metricType,
+              timestamp: Number(metrics.timestamp),
+            });
+          }
+        } catch (err) {
+          console.error(`Error loading data ${dataId}:`, err);
+        }
+      }
+      
+      setMyHealthData(healthDataList);
+      
+      if (healthDataList.length > 0) {
+        toast.success(`Loaded ${healthDataList.length} health data records`);
+      }
+    } catch (err) {
+      console.error("Error loading health data:", err);
+    } finally {
+      setLoadingMyData(false);
+    }
+  };
+
+  // Logout
   const handleLogout = () => {
     setAccount(null);
     setChainId(null);
     setHtcBalance("0");
+    setMyHealthData([]);
     setContracts({
       provider: null,
       signer: null,
@@ -114,7 +179,67 @@ function App() {
     toast.info("Disconnected from wallet");
   };
 
-  // Register Data
+  // Register Health Data
+  const registerHealthData = async (healthData) => {
+    setLoading(true);
+    try {
+      const { registry } = contracts;
+      if (!registry) {
+        toast.error("Connect wallet first");
+        return;
+      }
+
+      // Generate data hash from health data
+      const dataString = HealthDataSimulator.generateDataHash(healthData);
+      const dataHash = ethers.keccak256(ethers.toUtf8Bytes(dataString));
+      
+      // Create metrics struct
+      const metrics = {
+        steps: healthData.steps,
+        heartRate: healthData.heartRate,
+        sleepMinutes: healthData.sleepMinutes,
+        calories: healthData.calories,
+        distance: healthData.distance,
+        activeMinutes: healthData.activeMinutes,
+        metricType: healthData.metricType,
+      };
+
+      toast.info("Registering health data on blockchain...");
+
+      const tx = await registry.registerDataWithMetrics(
+        dataHash,
+        "health_metrics",
+        `health://${healthData.metricType}`,
+        metrics
+      );
+      
+      await tx.wait();
+
+      let newId = 1;
+      try {
+        const nextId = await registry.nextDataId();
+        newId = Number(nextId) - 1;
+      } catch {
+        // fallback
+      }
+
+      setLastDataId(newId);
+      setListDataId(String(newId));
+      setShowHealthForm(false);
+
+      toast.success(`Health data registered successfully! DataId: ${newId}`);
+      
+      // Reload health data
+      await loadMyHealthData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Error registering health data: " + (err.reason || err.message || String(err)));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Register Simple Data (original method)
   const registerData = async () => {
     setLoading(true);
     try {
@@ -255,11 +380,18 @@ function App() {
     }
   };
 
+  // Handle list from health card
+  const handleListHealthData = (dataId) => {
+    setListDataId(String(dataId));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast.info(`Ready to list Health Data #${dataId}. Set your price below.`);
+  };
+
   return (
     <div className="App">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       
-      {/* 🆕 顶部导航栏 */}
+      {/* Top Navigation */}
       <header className="app-header">
         <div className="header-content">
           <div className="header-left">
@@ -282,7 +414,7 @@ function App() {
         </div>
       </header>
 
-      {/* 主内容区域 */}
+      {/* Main Content */}
       <div className="container">
         <div className="page-header">
           <h1>HealthChain Demo dApp</h1>
@@ -324,10 +456,72 @@ function App() {
           )}
         </Card>
 
-        {/* 2. Register Data Section */}
+        {/* 2. Register Health Data Section */}
         <Card 
           title="2. Register Health Data"
           subtitle="Register your wearable health data on-chain"
+          variant="elevated"
+        >
+          {!showHealthForm ? (
+            <>
+              <p className="helper-text">
+                📊 Register simulated wearable device data (steps, heart rate, sleep, calories, etc.)
+              </p>
+              <Button 
+                onClick={() => setShowHealthForm(true)}
+                variant="primary"
+                disabled={!account}
+                icon="➕"
+              >
+                Add Health Data
+              </Button>
+            </>
+          ) : (
+            <HealthDataForm
+              onSubmit={registerHealthData}
+              onCancel={() => setShowHealthForm(false)}
+            />
+          )}
+
+          {lastDataId && (
+            <div className="success-box">
+              <strong>✓ Last registered dataId:</strong>{' '}
+              <Badge variant="success">{lastDataId}</Badge>
+            </div>
+          )}
+
+          {/* Display user's health data */}
+          {myHealthData.length > 0 && (
+            <div className="my-health-data-section">
+              <h3 style={{ color: '#f1f5f9', marginTop: '2rem', marginBottom: '1rem' }}>
+                📋 My Health Data Records ({myHealthData.length})
+              </h3>
+              <div className="health-data-grid">
+                {myHealthData.map((data) => (
+                  <HealthDataCard
+                    key={data.dataId}
+                    data={data}
+                    dataId={data.dataId}
+                    showActions={true}
+                    onList={handleListHealthData}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {loadingMyData && (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <LoadingSpinner />
+              <p style={{ color: '#cbd5e1', marginTop: '1rem' }}>Loading health data...</p>
+            </div>
+          )}
+        </Card>
+
+        {/* Alternative: Simple Data Registration */}
+        <Card 
+          title="2B. Register Simple Data (Alternative)"
+          subtitle="Register generic data without health metrics"
           variant="elevated"
         >
           <Textarea
@@ -362,15 +556,8 @@ function App() {
             loading={loading}
             disabled={!account}
           >
-            Register Data
+            Register Simple Data
           </Button>
-
-          {lastDataId && (
-            <div className="success-box">
-              <strong>✓ Last registered dataId:</strong>{' '}
-              <Badge variant="success">{lastDataId}</Badge>
-            </div>
-          )}
         </Card>
 
         {/* 3. Create Listing Section */}

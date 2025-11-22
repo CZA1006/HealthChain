@@ -4,15 +4,39 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IDataRegistry {
+    // 健康数据结构
+    struct HealthMetrics {
+        uint256 steps;
+        uint256 heartRate;
+        uint256 sleepMinutes;
+        uint256 calories;
+        uint256 distance;
+        uint256 activeMinutes;
+        string metricType;
+    }
+
     function records(uint256 dataId) external view returns (
-        address owner,
+        address provider,
         bytes32 dataHash,
         string memory dataType,
         string memory uri,
-        uint64 createdAt
+        uint64 createdAt,
+        HealthMetrics memory metrics,
+        bool hasMetrics
     );
 
     function grantAccess(uint256 dataId, address grantee) external;
+    
+    function getHealthMetrics(uint256 dataId) external view returns (
+        uint256 steps,
+        uint256 heartRate,
+        uint256 sleepMinutes,
+        uint256 calories,
+        uint256 distance,
+        uint256 activeMinutes,
+        string memory metricType,
+        bool hasMetrics
+    );
 }
 
 /// @title Marketplace for selling access to health data using HTC
@@ -60,7 +84,8 @@ contract Marketplace {
     {
         require(price > 0, "Price must be > 0");
 
-        (address owner,,,,) = registry.records(dataId);
+        // ✅ 修复：现在是7个返回值
+        (address owner,,,,,,) = registry.records(dataId);
         require(owner != address(0), "Data not found");
         require(owner == msg.sender, "Not data owner");
 
@@ -104,5 +129,56 @@ contract Marketplace {
 
         // Listing stays active; multiple buyers can purchase access.
         // If you want one-time sale, you could also do: l.active = false;
+    }
+
+    /// @notice 获取 listing 的健康数据预览（用于前端展示）
+    function getListingHealthPreview(uint256 listingId) external view returns (
+        uint256 steps,
+        uint256 heartRate,
+        uint256 calories,
+        string memory metricType,
+        bool hasMetrics
+    ) {
+        Listing memory listing = listings[listingId];
+        require(listing.seller != address(0), "Listing not found");
+
+        (
+            uint256 _steps,
+            uint256 _heartRate,
+            ,
+            uint256 _calories,
+            ,
+            ,
+            string memory _metricType,
+            bool _hasMetrics
+        ) = registry.getHealthMetrics(listing.dataId);
+
+        return (_steps, _heartRate, _calories, _metricType, _hasMetrics);
+    }
+
+    /// @notice 批量获取所有活跃 listings
+    function getActiveListings() external view returns (uint256[] memory) {
+        uint256 count = 0;
+        
+        // 先计数
+        for (uint256 i = 1; i <= nextListingId; i++) {
+            if (listings[i].active) {
+                count++;
+            }
+        }
+        
+        // 创建数组
+        uint256[] memory activeListings = new uint256[](count);
+        uint256 index = 0;
+        
+        // 填充数组
+        for (uint256 i = 1; i <= nextListingId; i++) {
+            if (listings[i].active) {
+                activeListings[index] = i;
+                index++;
+            }
+        }
+        
+        return activeListings;
     }
 }
