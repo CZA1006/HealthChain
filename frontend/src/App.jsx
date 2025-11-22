@@ -338,7 +338,7 @@ function App() {
       let newId = 1;
       try {
         const nextId = await registry.nextDataId();
-        newId = Number(nextId) - 1;
+        newId = Number(nextId);
       } catch {
         // fallback
       }
@@ -378,7 +378,7 @@ function App() {
       let newId = 1;
       try {
         const nextId = await registry.nextDataId();
-        newId = Number(nextId) - 1;
+        newId = Number(nextId);
       } catch {
         // fallback
       }
