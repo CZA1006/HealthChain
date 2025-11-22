@@ -31,6 +31,12 @@
   overflow-y: auto;
 }
 
+.login-section input {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
 /* === 右侧：紫色渐变展示区 === */
 .hero-section {
   flex: 1;
