@@ -27,7 +27,8 @@ contract DataRegistry is Ownable {
         bool hasMetrics;        // 🆕 是否包含健康指标数据
     }
 
-    uint256 public nextDataId;
+    // 🆕 改进：使用基于用户地址的分片ID设计
+    mapping(address => uint256) public userNextDataId;  // 每个用户独立的计数器
     mapping(uint256 => DataRecord) public records;
     mapping(uint256 => mapping(address => bool)) public hasAccess;
 
@@ -60,6 +61,26 @@ contract DataRegistry is Ownable {
     // Ownable in OZ v5 needs initial owner in constructor
     constructor() Ownable(msg.sender) {}
 
+    /// @notice 🆕 生成全局唯一的dataId
+    function _generateDataId(address user) internal returns (uint256) {
+        uint256 userCounter = userNextDataId[user] + 1;
+        userNextDataId[user] = userCounter;
+        
+        // dataId结构：高160位为用户地址，低96位为用户数据计数器
+        // 这样可以确保全局唯一性，同时支持并发调用
+        return (uint256(uint160(user)) << 96) | userCounter;
+    }
+
+    /// @notice 🆕 从dataId中提取用户地址
+    function getProviderFromDataId(uint256 dataId) public pure returns (address) {
+        return address(uint160(dataId >> 96));
+    }
+
+    /// @notice 🆕 从dataId中提取用户数据序号
+    function getUserDataIndex(uint256 dataId) public pure returns (uint256) {
+        return dataId & ((1 << 96) - 1);
+    }
+
     /// @notice Set the marketplace contract allowed to call grantAccess / revokeAccess
     function setMarketplace(address _marketplace) external onlyOwner {
         require(_marketplace != address(0), "Invalid marketplace");
@@ -68,7 +89,7 @@ contract DataRegistry is Ownable {
     }
 
     modifier onlyRecordController(uint256 dataId) {
-        address owner = records[dataId].provider;
+        address owner = getProviderFromDataId(dataId);
         require(
             msg.sender == owner || msg.sender == marketplace,
             "Not data owner"
@@ -84,7 +105,7 @@ contract DataRegistry is Ownable {
     ) external returns (uint256) {
         require(dataHash != bytes32(0), "Invalid data hash");
 
-        uint256 dataId = ++nextDataId;
+        uint256 dataId = _generateDataId(msg.sender);
 
         // 创建空的健康指标
         HealthMetrics memory emptyMetrics;
@@ -116,7 +137,7 @@ contract DataRegistry is Ownable {
             "Metrics cannot be all zero"
         );
 
-        uint256 dataId = ++nextDataId;
+        uint256 dataId = _generateDataId(msg.sender);
 
         records[dataId] = DataRecord({
             provider: msg.sender,
@@ -160,24 +181,17 @@ contract DataRegistry is Ownable {
 
     /// @notice 🆕 获取用户的所有数据 ID
     function getUserDataIds(address user) external view returns (uint256[] memory) {
-        uint256 count = 0;
-        
-        // 先计数
-        for (uint256 i = 1; i <= nextDataId; i++) {
-            if (records[i].provider == user) {
-                count++;
-            }
+        uint256 userCounter = userNextDataId[user];
+        if (userCounter == 0) {
+            return new uint256[](0);
         }
         
-        // 创建数组
-        uint256[] memory userDataIds = new uint256[](count);
-        uint256 index = 0;
+        uint256[] memory userDataIds = new uint256[](userCounter);
         
-        // 填充数组
-        for (uint256 i = 1; i <= nextDataId; i++) {
-            if (records[i].provider == user) {
-                userDataIds[index] = i;
-                index++;
+        for (uint256 i = 1; i <= userCounter; i++) {
+            uint256 dataId = (uint256(uint160(user)) << 96) | i;
+            if (records[dataId].provider != address(0)) {
+                userDataIds[i - 1] = dataId;
             }
         }
         
@@ -186,7 +200,8 @@ contract DataRegistry is Ownable {
 
     /// @notice 🆕 撤销数据（符合"被遗忘权"）
     function revokeData(uint256 dataId) external {
-        require(records[dataId].provider == msg.sender, "Not data owner");
+        address provider = getProviderFromDataId(dataId);
+        require(provider == msg.sender, "Not data owner");
         require(records[dataId].provider != address(0), "Data not found");
         
         // 标记数据为已删除（不真正删除，保留历史记录）
@@ -199,7 +214,7 @@ contract DataRegistry is Ownable {
     {
         require(grantee != address(0), "Invalid grantee");
         hasAccess[dataId][grantee] = true;
-        emit AccessGranted(dataId, records[dataId].provider, grantee);
+        emit AccessGranted(dataId, getProviderFromDataId(dataId), grantee);
     }
 
     function revokeAccess(uint256 dataId, address grantee)
@@ -208,13 +223,17 @@ contract DataRegistry is Ownable {
     {
         require(hasAccess[dataId][grantee], "No access to revoke");
         hasAccess[dataId][grantee] = false;
-        emit AccessRevoked(dataId, records[dataId].provider, grantee);
+        emit AccessRevoked(dataId, getProviderFromDataId(dataId), grantee);
     }
 
     function canAccess(uint256 dataId, address user) external view returns (bool) {
         DataRecord memory rec = records[dataId];
         if (rec.provider == address(0)) return false;
-        if (user == rec.provider) return true;
+        
+        // 使用新的dataId结构验证所有者
+        address providerFromId = getProviderFromDataId(dataId);
+        if (user == providerFromId) return true;
+        
         return hasAccess[dataId][user];
     }
 }
