@@ -186,12 +186,28 @@ contract DataRegistry is Ownable {
             return new uint256[](0);
         }
         
-        uint256[] memory userDataIds = new uint256[](userCounter);
+        // 先计算有效数据数量
+        uint256 validCount = 0;
+        for (uint256 i = 1; i <= userCounter; i++) {
+            uint256 dataId = (uint256(uint160(user)) << 96) | i;
+            if (records[dataId].provider != address(0)) {
+                validCount++;
+            }
+        }
+        
+        if (validCount == 0) {
+            return new uint256[](0);
+        }
+        
+        // 创建正确大小的数组
+        uint256[] memory userDataIds = new uint256[](validCount);
+        uint256 index = 0;
         
         for (uint256 i = 1; i <= userCounter; i++) {
             uint256 dataId = (uint256(uint160(user)) << 96) | i;
             if (records[dataId].provider != address(0)) {
-                userDataIds[i - 1] = dataId;
+                userDataIds[index] = dataId;
+                index++;
             }
         }
         

@@ -62,6 +62,27 @@ function initializeDatabase() {
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
     `);
+
+    // 🆕 健康数据存储表 - 离线存储实际健康数据
+    db.run(`
+        CREATE TABLE IF NOT EXISTS health_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            data_hash TEXT UNIQUE NOT NULL,          -- 链上存储的DataHash
+            data_type TEXT NOT NULL,                 -- 数据类型: steps, heart_rate, sleep等
+            actual_data TEXT NOT NULL,               -- 实际健康数据（JSON格式）
+            metadata TEXT,                           -- 元数据（JSON格式）
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    `);
+
+    // 🆕 创建索引提升查询性能
+    db.run('CREATE INDEX IF NOT EXISTS idx_health_data_user_id ON health_data(user_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_health_data_hash ON health_data(data_hash)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_health_data_type ON health_data(data_type)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_health_data_created ON health_data(created_at)');
 }
 
 // 用户注册
@@ -297,6 +318,228 @@ function authenticateToken(req, res, next) {
         next();
     });
 }
+
+// 🆕 存储健康数据（离线存储实际数据，返回DataHash用于链上存储）
+app.post('/api/health-data/store', authenticateToken, (req, res) => {
+    const { dataType, actualData, metadata } = req.body;
+    
+    if (!dataType || !actualData) {
+        return res.status(400).json({ error: 'dataType and actualData are required' });
+    }
+    
+    try {
+        // 生成DataHash（与链上保持一致的计算方式）
+        const dataHash = require('crypto').createHash('sha256')
+            .update(JSON.stringify({
+                userId: req.user.userId,
+                dataType,
+                actualData,
+                timestamp: Date.now()
+            }))
+            .digest('hex');
+        
+        // 存储到SQLite数据库
+        db.run(
+            `INSERT INTO health_data (user_id, data_hash, data_type, actual_data, metadata, updated_at) 
+             VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+            [req.user.userId, dataHash, dataType, JSON.stringify(actualData), JSON.stringify(metadata || {})],
+            function(err) {
+                if (err) {
+                    console.error('Store health data error:', err);
+                    if (err.message.includes('UNIQUE constraint failed')) {
+                        return res.status(409).json({ error: 'Data already exists' });
+                    }
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                res.status(201).json({
+                    message: 'Health data stored successfully',
+                    dataHash: dataHash,
+                    dataId: this.lastID
+                });
+            }
+        );
+    } catch (error) {
+        console.error('Store health data error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 🆕 根据DataHash检索健康数据
+app.get('/api/health-data/:dataHash', authenticateToken, (req, res) => {
+    const { dataHash } = req.params;
+    
+    db.get(
+        `SELECT hd.*, u.wallet_address 
+         FROM health_data hd 
+         JOIN users u ON hd.user_id = u.id 
+         WHERE hd.data_hash = ? AND hd.user_id = ?`,
+        [dataHash, req.user.userId],
+        (err, row) => {
+            if (err) {
+                console.error('Retrieve health data error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (!row) {
+                return res.status(404).json({ error: 'Health data not found' });
+            }
+            
+            // 验证数据完整性
+            const calculatedHash = require('crypto').createHash('sha256')
+                .update(JSON.stringify({
+                    userId: req.user.userId,
+                    dataType: row.data_type,
+                    actualData: JSON.parse(row.actual_data),
+                    timestamp: new Date(row.created_at).getTime()
+                }))
+                .digest('hex');
+            
+            const isIntegrityValid = calculatedHash === dataHash;
+            
+            res.json({
+                dataHash: row.data_hash,
+                dataType: row.data_type,
+                actualData: JSON.parse(row.actual_data),
+                metadata: row.metadata ? JSON.parse(row.metadata) : {},
+                walletAddress: row.wallet_address,
+                createdAt: row.created_at,
+                updatedAt: row.updated_at,
+                integrityValid: isIntegrityValid
+            });
+        }
+    );
+});
+
+// 🆕 获取用户的所有健康数据（分页）
+app.get('/api/health-data', authenticateToken, (req, res) => {
+    const { page = 1, limit = 20, dataType } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    let query = `SELECT hd.*, u.wallet_address 
+                 FROM health_data hd 
+                 JOIN users u ON hd.user_id = u.id 
+                 WHERE hd.user_id = ?`;
+    let params = [req.user.userId];
+    
+    if (dataType) {
+        query += ' AND hd.data_type = ?';
+        params.push(dataType);
+    }
+    
+    query += ' ORDER BY hd.created_at DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), offset);
+    
+    // 获取总数
+    let countQuery = 'SELECT COUNT(*) as total FROM health_data WHERE user_id = ?';
+    let countParams = [req.user.userId];
+    
+    if (dataType) {
+        countQuery += ' AND data_type = ?';
+        countParams.push(dataType);
+    }
+    
+    db.get(countQuery, countParams, (err, countResult) => {
+        if (err) {
+            console.error('Count health data error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        
+        db.all(query, params, (err, rows) => {
+            if (err) {
+                console.error('Retrieve health data list error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            const healthData = rows.map(row => ({
+                dataHash: row.data_hash,
+                dataType: row.data_type,
+                actualData: JSON.parse(row.actual_data),
+                metadata: row.metadata ? JSON.parse(row.metadata) : {},
+                walletAddress: row.wallet_address,
+                createdAt: row.created_at,
+                updatedAt: row.updated_at
+            }));
+            
+            res.json({
+                data: healthData,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: countResult.total,
+                    totalPages: Math.ceil(countResult.total / parseInt(limit))
+                }
+            });
+        });
+    });
+});
+
+// 🆕 验证DataHash与健康数据的完整性
+app.post('/api/health-data/verify', authenticateToken, (req, res) => {
+    const { dataHash, dataType, actualData, timestamp } = req.body;
+    
+    if (!dataHash || !dataType || !actualData) {
+        return res.status(400).json({ error: 'dataHash, dataType, and actualData are required' });
+    }
+    
+    try {
+        // 重新计算DataHash进行验证
+        const calculatedHash = require('crypto').createHash('sha256')
+            .update(JSON.stringify({
+                userId: req.user.userId,
+                dataType,
+                actualData,
+                timestamp: timestamp || Date.now()
+            }))
+            .digest('hex');
+        
+        const isIntegrityValid = calculatedHash === dataHash;
+        
+        // 检查数据库中是否存在该DataHash
+        db.get(
+            'SELECT * FROM health_data WHERE data_hash = ? AND user_id = ?',
+            [dataHash, req.user.userId],
+            (err, row) => {
+                if (err) {
+                    console.error('Verify health data error:', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                res.json({
+                    integrityValid: isIntegrityValid,
+                    existsInDatabase: !!row,
+                    calculatedHash: calculatedHash,
+                    providedHash: dataHash
+                });
+            }
+        );
+    } catch (error) {
+        console.error('Verify health data error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// 🆕 删除健康数据
+app.delete('/api/health-data/:dataHash', authenticateToken, (req, res) => {
+    const { dataHash } = req.params;
+    
+    db.run(
+        'DELETE FROM health_data WHERE data_hash = ? AND user_id = ?',
+        [dataHash, req.user.userId],
+        function(err) {
+            if (err) {
+                console.error('Delete health data error:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            if (this.changes === 0) {
+                return res.status(404).json({ error: 'Health data not found' });
+            }
+            
+            res.json({ message: 'Health data deleted successfully' });
+        }
+    );
+});
 
 // 健康检查端点
 app.get('/api/health', (req, res) => {

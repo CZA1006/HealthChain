@@ -328,6 +328,196 @@ export class HealthChainAPI {
     getToken() {
         return localStorage.getItem('healthchain_token');
     }
+    
+    // 🆕 存储健康数据（离线存储实际数据，返回DataHash用于链上存储）
+    async storeHealthData(healthData) {
+        if (this.useBackend) {
+            const token = this.getToken();
+            if (!token) {
+                throw new Error('No active session');
+            }
+            
+            return await this.makeRequest('/health-data/store', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(healthData)
+            });
+        } else {
+            // localStorage fallback
+            const healthDataList = JSON.parse(localStorage.getItem('healthchain_health_data') || '[]');
+            
+            // 生成DataHash（简化版本）
+            const dataHash = btoa(JSON.stringify({
+                ...healthData,
+                timestamp: Date.now()
+            })).substring(0, 64);
+            
+            const newHealthData = {
+                id: Date.now(),
+                dataHash: dataHash,
+                ...healthData,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            healthDataList.push(newHealthData);
+            localStorage.setItem('healthchain_health_data', JSON.stringify(healthDataList));
+            
+            return {
+                message: 'Health data stored successfully',
+                dataHash: dataHash,
+                dataId: newHealthData.id
+            };
+        }
+    }
+    
+    // 🆕 根据DataHash检索健康数据
+    async getHealthDataByHash(dataHash) {
+        if (this.useBackend) {
+            const token = this.getToken();
+            if (!token) {
+                throw new Error('No active session');
+            }
+            
+            return await this.makeRequest(`/health-data/${dataHash}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        } else {
+            // localStorage fallback
+            const healthDataList = JSON.parse(localStorage.getItem('healthchain_health_data') || '[]');
+            const healthData = healthDataList.find(item => item.dataHash === dataHash);
+            
+            if (!healthData) {
+                throw new Error('Health data not found');
+            }
+            
+            return {
+                ...healthData,
+                integrityValid: true,
+                walletAddress: 'local-storage'
+            };
+        }
+    }
+    
+    // 🆕 获取用户的所有健康数据（分页）
+    async getHealthDataList(options = {}) {
+        const { page = 1, limit = 20, dataType } = options;
+        
+        if (this.useBackend) {
+            const token = this.getToken();
+            if (!token) {
+                throw new Error('No active session');
+            }
+            
+            const params = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString()
+            });
+            
+            if (dataType) {
+                params.append('dataType', dataType);
+            }
+            
+            return await this.makeRequest(`/health-data?${params.toString()}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        } else {
+            // localStorage fallback
+            const healthDataList = JSON.parse(localStorage.getItem('healthchain_health_data') || '[]');
+            
+            // 过滤和分页
+            let filteredData = healthDataList;
+            if (dataType) {
+                filteredData = filteredData.filter(item => item.dataType === dataType);
+            }
+            
+            // 按创建时间排序
+            filteredData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            const startIndex = (page - 1) * limit;
+            const endIndex = startIndex + limit;
+            const paginatedData = filteredData.slice(startIndex, endIndex);
+            
+            return {
+                data: paginatedData,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: filteredData.length,
+                    totalPages: Math.ceil(filteredData.length / parseInt(limit))
+                }
+            };
+        }
+    }
+    
+    // 🆕 验证DataHash与健康数据的完整性
+    async verifyHealthDataIntegrity(verificationData) {
+        if (this.useBackend) {
+            const token = this.getToken();
+            if (!token) {
+                throw new Error('No active session');
+            }
+            
+            return await this.makeRequest('/health-data/verify', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(verificationData)
+            });
+        } else {
+            // localStorage fallback - 简化验证
+            const healthDataList = JSON.parse(localStorage.getItem('healthchain_health_data') || '[]');
+            const healthData = healthDataList.find(item => item.dataHash === verificationData.dataHash);
+            
+            const existsInDatabase = !!healthData;
+            const integrityValid = existsInDatabase && 
+                healthData.dataType === verificationData.dataType &&
+                JSON.stringify(healthData.actualData) === JSON.stringify(verificationData.actualData);
+            
+            return {
+                integrityValid: integrityValid,
+                existsInDatabase: existsInDatabase,
+                calculatedHash: verificationData.dataHash,
+                providedHash: verificationData.dataHash
+            };
+        }
+    }
+    
+    // 🆕 删除健康数据
+    async deleteHealthData(dataHash) {
+        if (this.useBackend) {
+            const token = this.getToken();
+            if (!token) {
+                throw new Error('No active session');
+            }
+            
+            return await this.makeRequest(`/health-data/${dataHash}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        } else {
+            // localStorage fallback
+            const healthDataList = JSON.parse(localStorage.getItem('healthchain_health_data') || '[]');
+            const filteredData = healthDataList.filter(item => item.dataHash !== dataHash);
+            
+            if (filteredData.length === healthDataList.length) {
+                throw new Error('Health data not found');
+            }
+            
+            localStorage.setItem('healthchain_health_data', JSON.stringify(filteredData));
+            
+            return { message: 'Health data deleted successfully' };
+        }
+    }
 }
 
 // 创建全局API实例
