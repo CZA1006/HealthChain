@@ -64,8 +64,8 @@ function HealthDataCard({
   return (
     <div className="health-data-card">
       <div className="health-card-header">
-        <div className="health-card-title">
-          <h4>Health Data #{dataId}</h4>
+        <div className="health-card-title-row">
+          <span className="data-id-tag">DataID #{dataId}</span>
           <Badge variant={getTypeVariant(data.metricType)}>
             {data.metricType.toUpperCase()}
           </Badge>

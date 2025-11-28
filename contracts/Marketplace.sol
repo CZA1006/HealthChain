@@ -15,7 +15,7 @@ interface IDataRegistry {
         string metricType;
     }
 
-    function records(uint256 dataId) external view returns (
+    function records(uint256 dataAddr) external view returns (
         address provider,
         bytes32 dataHash,
         string memory dataType,
@@ -25,9 +25,9 @@ interface IDataRegistry {
         bool hasMetrics
     );
 
-    function grantAccess(uint256 dataId, address grantee) external;
-    
-    function getHealthMetrics(uint256 dataId) external view returns (
+    function grantAccess(uint256 dataAddr, address grantee) external;
+
+    function getHealthMetrics(uint256 dataAddr) external view returns (
         uint256 steps,
         uint256 heartRate,
         uint256 sleepMinutes,
@@ -43,7 +43,7 @@ interface IDataRegistry {
 contract Marketplace {
     struct Listing {
         uint256 id;
-        uint256 dataId;
+        uint256 dataAddr;
         address seller;
         uint256 price;  // in HTC (18 decimals)
         bool active;
@@ -57,7 +57,7 @@ contract Marketplace {
 
     event ListingCreated(
         uint256 indexed listingId,
-        uint256 indexed dataId,
+        uint256 indexed dataAddr,
         address indexed seller,
         uint256 price
     );
@@ -66,7 +66,7 @@ contract Marketplace {
 
     event AccessPurchased(
         uint256 indexed listingId,
-        uint256 indexed dataId,
+        uint256 indexed dataAddr,
         address indexed buyer,
         uint256 price
     );
@@ -78,14 +78,14 @@ contract Marketplace {
         registry = IDataRegistry(registryAddress);
     }
 
-    function createListing(uint256 dataId, uint256 price)
+    function createListing(uint256 dataAddr, uint256 price)
         external
         returns (uint256)
     {
         require(price > 0, "Price must be > 0");
 
         // ✅ 修复：现在是7个返回值
-        (address owner,,,,,,) = registry.records(dataId);
+        (address owner,,,,,,) = registry.records(dataAddr);
         require(owner != address(0), "Data not found");
         require(owner == msg.sender, "Not data owner");
 
@@ -93,13 +93,13 @@ contract Marketplace {
 
         listings[listingId] = Listing({
             id: listingId,
-            dataId: dataId,
+            dataAddr: dataAddr,
             seller: msg.sender,
             price: price,
             active: true
         });
 
-        emit ListingCreated(listingId, dataId, msg.sender, price);
+        emit ListingCreated(listingId, dataAddr, msg.sender, price);
         return listingId;
     }
 
@@ -123,9 +123,9 @@ contract Marketplace {
         bool ok = htc.transferFrom(msg.sender, l.seller, price);
         require(ok, "HTC transfer failed");
 
-        registry.grantAccess(l.dataId, msg.sender);
+        registry.grantAccess(l.dataAddr, msg.sender);
 
-        emit AccessPurchased(listingId, l.dataId, msg.sender, price);
+        emit AccessPurchased(listingId, l.dataAddr, msg.sender, price);
 
         // Listing stays active; multiple buyers can purchase access.
         // If you want one-time sale, you could also do: l.active = false;
@@ -151,7 +151,7 @@ contract Marketplace {
             ,
             string memory _metricType,
             bool _hasMetrics
-        ) = registry.getHealthMetrics(listing.dataId);
+        ) = registry.getHealthMetrics(listing.dataAddr);
 
         return (_steps, _heartRate, _calories, _metricType, _hasMetrics);
     }

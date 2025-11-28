@@ -851,3 +851,321 @@ button:disabled {
     max-width: 1800px;
   }
 }
+
+/* ========================================
+   13. My DataIDs Section Styles
+======================================== */
+
+.my-data-ids-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+}
+
+.data-id-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.data-id-card {
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.data-id-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.data-id-card:hover {
+  transform: translateY(-4px) scale(1.05);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow:
+    0 8px 24px rgba(59, 130, 246, 0.3),
+    0 0 0 1px rgba(59, 130, 246, 0.4) inset;
+}
+
+.data-id-card:hover::before {
+  opacity: 1;
+}
+
+.data-id-badge {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #3b82f6;
+  margin-bottom: 0.75rem;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.data-id-use-btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.data-id-use-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+}
+
+.data-id-use-btn:active {
+  transform: translateY(0);
+}
+
+/* Select Input Styles */
+.select-input {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  color: #f1f5f9 !important;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.select-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(15, 23, 42, 0.3) !important;
+}
+
+.select-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(15, 23, 42, 0.8) !important;
+  box-shadow:
+    0 0 0 4px rgba(59, 130, 246, 0.15),
+    0 8px 16px rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px);
+}
+
+.select-input option {
+  background: #1e293b;
+  color: #f1f5f9;
+  padding: 0.75rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  letter-spacing: 0.025em;
+}
+
+.input-helper-text {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+/* Responsive adjustments for DataID grid */
+@media (max-width: 768px) {
+  .data-id-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .data-id-card {
+    padding: 1rem;
+  }
+
+  .data-id-badge {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .data-id-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .data-id-card {
+    padding: 0.875rem;
+  }
+
+  .data-id-badge {
+    font-size: 1.25rem;
+  }
+
+  .data-id-use-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Data Type Specific Styles */
+.data-id-card.health-data {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.data-id-card.health-data:hover {
+  border-color: rgba(16, 185, 129, 0.7);
+  box-shadow:
+    0 8px 24px rgba(16, 185, 129, 0.3),
+    0 0 0 1px rgba(16, 185, 129, 0.5) inset;
+}
+
+.data-id-card.health-data .data-id-badge {
+  color: #10b981;
+  text-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.data-id-card.simple-data {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.data-id-card.simple-data:hover {
+  border-color: rgba(245, 158, 11, 0.7);
+  box-shadow:
+    0 8px 24px rgba(245, 158, 11, 0.3),
+    0 0 0 1px rgba(245, 158, 11, 0.5) inset;
+}
+
+.data-id-card.simple-data .data-id-badge {
+  color: #f59e0b;
+  text-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.data-type-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.data-id-card.health-data .data-type-label {
+  color: #6ee7b7;
+}
+
+.data-id-card.simple-data .data-type-label {
+  color: #fcd34d;
+}
+
+/* ========================================
+   14. Marketplace Buy Section Styles
+======================================== */
+
+/* Highlight the marketplace/buy section with purple theme */
+.card[title*="Buy Data Access"] {
+  border-color: rgba(168, 85, 247, 0.3);
+  background: rgba(88, 28, 135, 0.1) !important;
+}
+
+.card[title*="Buy Data Access"]:hover {
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow:
+    0 20px 60px rgba(168, 85, 247, 0.2),
+    0 0 0 1px rgba(168, 85, 247, 0.3) inset,
+    0 0 40px rgba(168, 85, 247, 0.1);
+}
+
+/* Listing ID input with marketplace styling */
+input[placeholder*="listing ID"],
+input[placeholder*="Listing ID"] {
+  border-color: rgba(168, 85, 247, 0.3);
+  background: rgba(88, 28, 135, 0.2) !important;
+}
+
+input[placeholder*="listing ID"]:focus,
+input[placeholder*="Listing ID"]:focus {
+  border-color: #a855f7;
+  box-shadow:
+    0 0 0 4px rgba(168, 85, 247, 0.15),
+    0 8px 16px rgba(168, 85, 247, 0.1);
+}
+
+/* Marketplace action buttons */
+.card[title*="Buy Data Access"] .button-group button {
+  position: relative;
+  overflow: hidden;
+}
+
+.card[title*="Buy Data Access"] .btn-primary,
+.card[title*="Buy Data Access"] button[variant="primary"] {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  box-shadow:
+    0 4px 16px rgba(168, 85, 247, 0.4),
+    0 0 0 1px rgba(168, 85, 247, 0.5) inset;
+}
+
+.card[title*="Buy Data Access"] .btn-primary:hover,
+.card[title*="Buy Data Access"] button[variant="primary"]:hover:not(:disabled) {
+  box-shadow:
+    0 12px 32px rgba(168, 85, 247, 0.5),
+    0 0 0 1px rgba(168, 85, 247, 0.8) inset,
+    0 0 20px rgba(168, 85, 247, 0.3);
+}
+
+.card[title*="Buy Data Access"] .btn-outline,
+.card[title*="Buy Data Access"] button[variant="outline"] {
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.card[title*="Buy Data Access"] .btn-outline:hover:not(:disabled),
+.card[title*="Buy Data Access"] button[variant="outline"]:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.1);
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 8px 24px rgba(168, 85, 247, 0.2);
+}
+
+/* Marketplace helper text styling */
+.card[title*="Buy Data Access"] .helper-text {
+  background: rgba(168, 85, 247, 0.1);
+  border-left: 3px solid #a855f7;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.card[title*="Buy Data Access"] .helper-text strong {
+  color: #c084fc !important;
+  font-weight: 700;
+}
+

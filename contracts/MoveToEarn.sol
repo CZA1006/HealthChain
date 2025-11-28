@@ -15,7 +15,7 @@ interface IDataRegistry {
         string metricType;
     }
 
-    function records(uint256 dataId) external view returns (
+    function records(uint256 dataAddr) external view returns (
         address provider,
         bytes32 dataHash,
         string memory dataType,
@@ -25,7 +25,7 @@ interface IDataRegistry {
         bool hasMetrics
     );
 
-    function getHealthMetrics(uint256 dataId) external view returns (
+    function getHealthMetrics(uint256 dataAddr) external view returns (
         uint256 steps,
         uint256 heartRate,
         uint256 sleepMinutes,
@@ -58,12 +58,12 @@ contract MoveToEarn is Ownable {
     }
 
     mapping(address => UserReward) public userRewards;
-    mapping(address => mapping(uint256 => bool)) public hasClaimedDataId;
+    mapping(address => mapping(uint256 => bool)) public hasClaimedDataAddr;
 
     // Events
     event RewardClaimed(
         address indexed user,
-        uint256 indexed dataId,
+        uint256 indexed dataAddr,
         uint256 steps,
         uint256 reward,
         uint256 timestamp
@@ -84,8 +84,8 @@ contract MoveToEarn is Ownable {
     }
 
     /// @notice Claim reward for registered health data
-    /// @param dataId The ID of the registered health data
-    function claimReward(uint256 dataId) external {
+    /// @param dataAddr The address ID of the registered health data
+    function claimReward(uint256 dataAddr) external {
         // Get health metrics
         (
             uint256 steps,
@@ -96,10 +96,10 @@ contract MoveToEarn is Ownable {
             ,
             string memory metricType,
             bool hasMetrics
-        ) = dataRegistry.getHealthMetrics(dataId);
+        ) = dataRegistry.getHealthMetrics(dataAddr);
 
         // Verify data owner
-        (address provider,,,,,,) = dataRegistry.records(dataId);
+        (address provider,,,,,,) = dataRegistry.records(dataAddr);
         require(provider == msg.sender, "Not data owner");
 
         // Verify data has metrics
@@ -112,7 +112,7 @@ contract MoveToEarn is Ownable {
         );
 
         // Check if already claimed
-        require(!hasClaimedDataId[msg.sender][dataId], "Already claimed");
+        require(!hasClaimedDataAddr[msg.sender][dataAddr], "Already claimed");
 
         // Check cooldown
         UserReward storage user = userRewards[msg.sender];
@@ -139,13 +139,13 @@ contract MoveToEarn is Ownable {
         user.totalRewards += reward;
         user.lastClaimTime = block.timestamp;
         user.claimCount++;
-        hasClaimedDataId[msg.sender][dataId] = true;
+        hasClaimedDataAddr[msg.sender][dataAddr] = true;
 
         // Transfer reward
         bool success = htcToken.transfer(msg.sender, reward);
         require(success, "Transfer failed");
 
-        emit RewardClaimed(msg.sender, dataId, validSteps, reward, block.timestamp);
+        emit RewardClaimed(msg.sender, dataAddr, validSteps, reward, block.timestamp);
     }
 
     /// @notice Calculate reward based on steps
