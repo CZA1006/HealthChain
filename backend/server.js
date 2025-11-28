@@ -75,14 +75,19 @@ function initializeDatabase() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
-        )
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_health_data_user ON health_data(user_id);
+        CREATE INDEX IF NOT EXISTS idx_health_data_hash ON health_data(data_hash);
+        CREATE INDEX IF NOT EXISTS idx_health_data_type ON health_data(data_type);
+        CREATE INDEX IF NOT EXISTS idx_health_data_created ON health_data(created_at);
     `);
 
     // 🆕 创建索引提升查询性能
-    db.run('CREATE INDEX IF NOT EXISTS idx_health_data_user_id ON health_data(user_id)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_health_data_hash ON health_data(data_hash)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_health_data_type ON health_data(data_type)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_health_data_created ON health_data(created_at)');
+    // db.run('CREATE INDEX IF NOT EXISTS idx_health_data_user_id ON health_data(user_id)');
+    // db.run('CREATE INDEX IF NOT EXISTS idx_health_data_hash ON health_data(data_hash)');
+    // db.run('CREATE INDEX IF NOT EXISTS idx_health_data_type ON health_data(data_type)');
+    // db.run('CREATE INDEX IF NOT EXISTS idx_health_data_created ON health_data(created_at)');
 }
 
 // 用户注册
