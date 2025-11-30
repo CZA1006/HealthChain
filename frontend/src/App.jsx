@@ -8,12 +8,14 @@ import {
   REGISTRY_ADDRESS,
   MARKETPLACE_ADDRESS,
   MOVE_TO_EARN_ADDRESS,
+  TOKEN_SWAP_ADDRESS,
 } from "./contracts/addresses";
 
 import HTC_ARTIFACT from "./contracts/HealthChainToken.json";
 import REGISTRY_ARTIFACT from "./contracts/DataRegistry.json";
 import MARKET_ARTIFACT from "./contracts/Marketplace.json";
 import MOVE_TO_EARN_ARTIFACT from "./contracts/MoveToEarn.json";
+import TOKEN_SWAP_ARTIFACT from "./contracts/TokenSwap.json";
 
 // Import components
 import Card from './components/Card';
@@ -65,6 +67,12 @@ function App() {
   const [buyListingId, setBuyListingId] = useState("");
   const [hasAccess, setHasAccess] = useState(null);
 
+  // Token Swap state
+  const [ethAmount, setEthAmount] = useState("");
+  const [htcAmount, setHtcAmount] = useState("");
+  const [exchangeRate, setExchangeRate] = useState(0);
+  const [swapStats, setSwapStats] = useState(null);
+
   // Mapping from dataId (index) to full dataAddr for contract calls
   const [dataAddrMap, setDataAddrMap] = useState({});
 
@@ -75,6 +83,7 @@ function App() {
     registry: null,
     marketplace: null,
     moveToEarn: null,
+    tokenSwap: null,
   });
 
   // Use Toast Hook
@@ -116,10 +125,15 @@ function App() {
         MOVE_TO_EARN_ARTIFACT.abi ?? MOVE_TO_EARN_ARTIFACT,
         signer
       );
+      const tokenSwap = new ethers.Contract(
+        TOKEN_SWAP_ADDRESS,
+        TOKEN_SWAP_ARTIFACT.abi ?? TOKEN_SWAP_ARTIFACT,
+        signer
+      );
 
       const bal = await htc.balanceOf(addr);
 
-      setContracts({ provider, signer, htc, registry, marketplace, moveToEarn });
+      setContracts({ provider, signer, htc, registry, marketplace, moveToEarn, tokenSwap });
       setAccount(addr);
       setChainId(net.chainId.toString());
       setHtcBalance(ethers.formatUnits(bal, 18));
@@ -128,6 +142,9 @@ function App() {
       
       // Load user's health data
       loadMyHealthData(registry, addr, moveToEarn);
+
+      // Load swap stats
+      loadSwapStats(tokenSwap);
     } catch (err) {
       console.error(err);
       toast.error("Error connecting: " + (err.reason || err.message || String(err)));
@@ -703,6 +720,158 @@ function App() {
     toast.info(`Ready to list Health Data #${dataId}. Set your price below.`);
   };
 
+  // ========== TOKEN SWAP FUNCTIONS ==========
+
+  // Load swap contract stats
+  const loadSwapStats = async (swapContract) => {
+    try {
+      const swap = swapContract || contracts.tokenSwap;
+      if (!swap) return;
+
+      const stats = await swap.getStats();
+      const rate = await swap.exchangeRate();
+
+      setSwapStats({
+        htcBalance: Number(ethers.formatEther(stats[0])),
+        ethBalance: Number(ethers.formatEther(stats[1])),
+        exchangeRate: Number(ethers.formatEther(stats[2])),
+        totalEthCollected: Number(ethers.formatEther(stats[3])),
+        totalHtcSold: Number(ethers.formatEther(stats[4])),
+        minPurchase: Number(ethers.formatEther(stats[5])),
+        maxPurchase: Number(ethers.formatEther(stats[6])),
+      });
+
+      setExchangeRate(Number(ethers.formatEther(rate)));
+    } catch (err) {
+      console.error("Error loading swap stats:", err);
+    }
+  };
+
+  // Calculate HTC amount from ETH input
+  const calculateHtc = async (ethValue) => {
+    if (!ethValue || isNaN(ethValue) || ethValue <= 0) {
+      setHtcAmount("");
+      return;
+    }
+
+    try {
+      const { tokenSwap } = contracts;
+      if (!tokenSwap) return;
+
+      const ethWei = ethers.parseEther(ethValue.toString());
+      const htcWei = await tokenSwap.calculateHtcAmount(ethWei);
+      const htc = ethers.formatEther(htcWei);
+
+      setHtcAmount(htc);
+    } catch (err) {
+      console.error("Error calculating HTC:", err);
+      // Fallback to rate calculation
+      if (exchangeRate > 0) {
+        setHtcAmount((parseFloat(ethValue) * exchangeRate).toFixed(2));
+      }
+    }
+  };
+
+  // Calculate ETH amount from HTC input
+  const calculateEth = async (htcValue) => {
+    if (!htcValue || isNaN(htcValue) || htcValue <= 0) {
+      setEthAmount("");
+      return;
+    }
+
+    try {
+      const { tokenSwap } = contracts;
+      if (!tokenSwap) return;
+
+      const htcWei = ethers.parseEther(htcValue.toString());
+      const ethWei = await tokenSwap.calculateEthAmount(htcWei);
+      const eth = ethers.formatEther(ethWei);
+
+      setEthAmount(eth);
+    } catch (err) {
+      console.error("Error calculating ETH:", err);
+      // Fallback to rate calculation
+      if (exchangeRate > 0) {
+        setEthAmount((parseFloat(htcValue) / exchangeRate).toFixed(6));
+      }
+    }
+  };
+
+  // Swap ETH for HTC tokens
+  const swapEthForHtc = async () => {
+    setLoading(true);
+    try {
+      const { tokenSwap, htc } = contracts;
+      if (!tokenSwap || !htc) {
+        toast.error("Connect wallet first");
+        return;
+      }
+
+      if (!ethAmount || parseFloat(ethAmount) <= 0) {
+        toast.error("Enter a valid ETH amount");
+        return;
+      }
+
+      const ethWei = ethers.parseEther(ethAmount);
+
+      // Check limits
+      if (swapStats) {
+        const minEth = swapStats.minPurchase;
+        const maxEth = swapStats.maxPurchase;
+
+        if (parseFloat(ethAmount) < minEth) {
+          toast.error(`Minimum purchase is ${minEth} ETH`);
+          return;
+        }
+
+        if (parseFloat(ethAmount) > maxEth) {
+          toast.error(`Maximum purchase is ${maxEth} ETH`);
+          return;
+        }
+      }
+
+      toast.info(`Swapping ${ethAmount} ETH for ${htcAmount} HTC...`);
+
+      const tx = await tokenSwap.buyTokens({ value: ethWei });
+      console.log("Swap transaction sent:", tx.hash);
+
+      const receipt = await tx.wait();
+      console.log("Swap confirmed:", receipt);
+
+      // Update balances
+      const bal = await htc.balanceOf(account);
+      setHtcBalance(ethers.formatUnits(bal, 18));
+
+      // Reload swap stats
+      await loadSwapStats(tokenSwap);
+
+      toast.success(`✅ Successfully swapped ${ethAmount} ETH for ${htcAmount} HTC!`);
+
+      // Clear inputs
+      setEthAmount("");
+      setHtcAmount("");
+    } catch (err) {
+      console.error("Swap error:", err);
+
+      let errorMsg = "Failed to swap tokens";
+      if (err.message?.includes("Below minimum purchase")) {
+        errorMsg = "ETH amount below minimum purchase";
+      } else if (err.message?.includes("Exceeds maximum purchase")) {
+        errorMsg = "ETH amount exceeds maximum purchase";
+      } else if (err.message?.includes("Insufficient HTC")) {
+        errorMsg = "Insufficient HTC in swap contract";
+      } else if (err.reason) {
+        errorMsg = err.reason;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Listen for account changes
   useEffect(() => {
     if (window.ethereum) {
@@ -803,6 +972,88 @@ function App() {
                 <strong>HTC Balance:</strong>{' '}
                 <Badge variant="success">{parseFloat(htcBalance).toFixed(2)} HTC</Badge>
               </div>
+            </div>
+          )}
+        </Card>
+
+        {/* 1B. Get HTC Tokens Section */}
+        <Card
+          title="💰 Get HTC Tokens"
+          subtitle="Swap ETH for HTC tokens instantly"
+          variant="elevated"
+        >
+          <p className="helper-text">
+            🔄 Exchange your ETH for HTC tokens at a fixed rate. HTC tokens are needed to purchase data access and participate in the marketplace.
+          </p>
+
+          {swapStats && (
+            <div className="swap-stats">
+              <div className="stat-row">
+                <span className="stat-label">📊 Exchange Rate:</span>
+                <Badge variant="success">
+                  1 ETH = {swapStats.exchangeRate.toLocaleString()} HTC
+                </Badge>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">💎 Available HTC:</span>
+                <Badge variant="primary">
+                  {swapStats.htcBalance.toLocaleString()} HTC
+                </Badge>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">⚡ Min/Max:</span>
+                <Badge>
+                  {swapStats.minPurchase} - {swapStats.maxPurchase} ETH
+                </Badge>
+              </div>
+            </div>
+          )}
+
+          <div className="swap-calculator">
+            <div className="input-group">
+              <Input
+                label="You Pay (ETH)"
+                type="number"
+                value={ethAmount}
+                onChange={(e) => {
+                  setEthAmount(e.target.value);
+                  calculateHtc(e.target.value);
+                }}
+                placeholder="0.0"
+                step="0.001"
+                fullWidth
+              />
+              <div className="swap-arrow">⬇️</div>
+              <Input
+                label="You Receive (HTC)"
+                type="number"
+                value={htcAmount}
+                onChange={(e) => {
+                  setHtcAmount(e.target.value);
+                  calculateEth(e.target.value);
+                }}
+                placeholder="0.0"
+                fullWidth
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={swapEthForHtc}
+            variant="primary"
+            loading={loading}
+            disabled={!account || !ethAmount || parseFloat(ethAmount) <= 0}
+            icon="🔄"
+            fullWidth
+          >
+            Swap ETH for HTC
+          </Button>
+
+          {account && (
+            <div className="swap-info">
+              <small>
+                💡 You'll receive {htcAmount || '0'} HTC tokens instantly after the transaction confirms.
+              </small>
             </div>
           )}
         </Card>

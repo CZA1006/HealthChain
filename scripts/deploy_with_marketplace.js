@@ -25,18 +25,37 @@ async function main() {
   await moveToEarn.waitForDeployment();
   console.log(`MoveToEarn deployed to: ${moveToEarn.target}`);
 
-  // 5. Set Marketplace in DataRegistry
+  // 5. Deploy TokenSwap
+  // Exchange rate: 1 ETH = 1000 HTC
+  // Min purchase: 0.001 ETH
+  // Max purchase: 10 ETH
+  const TokenSwap = await hre.ethers.getContractFactory("TokenSwap");
+  const exchangeRate = hre.ethers.parseEther("1000"); // 1000 HTC per ETH
+  const minPurchase = hre.ethers.parseEther("0.001"); // 0.001 ETH minimum
+  const maxPurchase = hre.ethers.parseEther("10"); // 10 ETH maximum
+  const tokenSwap = await TokenSwap.deploy(htc.target, exchangeRate, minPurchase, maxPurchase);
+  await tokenSwap.waitForDeployment();
+  console.log(`TokenSwap deployed to: ${tokenSwap.target}`);
+  console.log(`Exchange rate: 1 ETH = ${hre.ethers.formatEther(exchangeRate)} HTC`);
+
+  // 6. Set Marketplace in DataRegistry
   const tx = await registry.setMarketplace(marketplace.target);
   await tx.wait();
   console.log(`Marketplace set in DataRegistry`);
 
-  // 6. Fund MoveToEarn contract with rewards (100,000 HTC)
+  // 7. Fund MoveToEarn contract with rewards (100,000 HTC)
   const fundAmount = hre.ethers.parseEther("100000");
   const fundTx = await htc.transfer(moveToEarn.target, fundAmount);
   await fundTx.wait();
   console.log(`MoveToEarn funded with ${hre.ethers.formatEther(fundAmount)} HTC`);
 
-  // 7. Save contract addresses to frontend
+  // 8. Fund TokenSwap contract with HTC (200,000 HTC for swaps)
+  const swapFundAmount = hre.ethers.parseEther("200000");
+  const swapFundTx = await htc.transfer(tokenSwap.target, swapFundAmount);
+  await swapFundTx.wait();
+  console.log(`TokenSwap funded with ${hre.ethers.formatEther(swapFundAmount)} HTC`);
+
+  // 9. Save contract addresses to frontend
   const fs = require("fs");
   const path = require("path");
   
@@ -52,12 +71,14 @@ export const HTC_ADDRESS = "${htc.target}";
 export const REGISTRY_ADDRESS = "${registry.target}";
 export const MARKETPLACE_ADDRESS = "${marketplace.target}";
 export const MOVE_TO_EARN_ADDRESS = "${moveToEarn.target}";
+export const TOKEN_SWAP_ADDRESS = "${tokenSwap.target}";
 
 export const CONTRACT_ADDRESSES = {
   healthChainToken: HTC_ADDRESS,
   dataRegistry: REGISTRY_ADDRESS,
   marketplace: MARKETPLACE_ADDRESS,
   moveToEarn: MOVE_TO_EARN_ADDRESS,
+  tokenSwap: TOKEN_SWAP_ADDRESS,
 };
 `;
 
