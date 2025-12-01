@@ -331,7 +331,7 @@ function App() {
       // Update claim status
       setCanClaimReward(prev => ({ ...prev, [dataId]: false }));
 
-      toast.success(`✅ Reward claimed successfully for Health Data #${dataId}!`);
+      toast.success(`Reward claimed successfully for Health Data #${dataId}!`);
     } catch (err) {
       console.error('Error claiming reward:', err);
       toast.error('Failed to claim reward: ' + (err.reason || err.message || String(err)));
@@ -473,7 +473,7 @@ function App() {
         }));
       }
 
-      toast.success(`✅ Health data registered successfully! DataId: ${newId}`);
+      toast.success(`Health data registered successfully! DataId: ${newId}`);
       
       // Reload health data
       await loadMyHealthData();
@@ -609,7 +609,7 @@ function App() {
       const tx = await marketplace.createListing(dataAddr, priceWei);
       await tx.wait();
 
-      toast.success(`✅ Listing created for DataID #${dataId} at ${listPrice} HTC`);
+      toast.success(`Listing created for DataID #${dataId} at ${listPrice} HTC`);
     } catch (err) {
       console.error(err);
       toast.error("Error creating listing: " + (err.reason || err.message || String(err)));
@@ -656,7 +656,7 @@ function App() {
       const bal = await htc.balanceOf(account);
       setHtcBalance(ethers.formatUnits(bal, 18));
 
-      toast.success(`✅ Access purchased successfully for Listing #${listingId}!`);
+      toast.success(`Access purchased successfully for Listing #${listingId}!`);
 
       // Store the dataAddr for checking access later
       setLastDataAddr(dataAddr);
@@ -845,7 +845,7 @@ function App() {
       // Reload swap stats
       await loadSwapStats(tokenSwap);
 
-      toast.success(`✅ Successfully swapped ${ethAmount} ETH for ${htcAmount} HTC!`);
+      toast.success(`Successfully swapped ${ethAmount} ETH for ${htcAmount} HTC!`);
 
       // Clear inputs
       setEthAmount("");
