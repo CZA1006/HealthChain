@@ -67,10 +67,10 @@ function initializeDatabase() {
         CREATE TABLE IF NOT EXISTS health_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            data_hash TEXT UNIQUE NOT NULL,          -- 链上存储的DataHash
-            data_type TEXT NOT NULL,                 -- 数据类型: steps, heart_rate, sleep等
-            actual_data TEXT NOT NULL,               -- 实际健康数据（JSON格式）
-            metadata TEXT,                           -- 元数据（JSON格式）
+            data_hash TEXT UNIQUE NOT NULL,
+            data_type TEXT NOT NULL,                 -- Available Types: steps, heart_rate, sleep等
+            actual_data TEXT NOT NULL,               -- JSON-format
+            metadata TEXT,                           -- JSON-format
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
@@ -160,7 +160,7 @@ app.post('/api/auth/login', async (req, res) => {
                     { expiresIn: '24h' }
                 );
 
-                // 保存会话
+                // Save session
                 const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
                 db.run(
                     'INSERT INTO sessions (user_id, token, wallet_address, expires_at) VALUES (?, ?, ?, ?)',
@@ -183,7 +183,7 @@ app.post('/api/auth/login', async (req, res) => {
                 });
             }
 
-            // 密码登录验证
+            // Password login verification
             if (password) {
                 const isValidPassword = await bcrypt.compare(password, user.password_hash);
                 if (!isValidPassword) {
@@ -226,7 +226,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// 获取用户信息
+// Get current user
 app.get('/api/user', authenticateToken, (req, res) => {
     db.get(
         'SELECT id, username, email, wallet_address FROM users WHERE id = ?',
@@ -246,7 +246,7 @@ app.get('/api/user', authenticateToken, (req, res) => {
     );
 });
 
-// 更新用户偏好设置
+// Update user preferences
 app.put('/api/user/preferences', authenticateToken, (req, res) => {
     const { theme, language, notificationsEnabled } = req.body;
 
@@ -265,7 +265,7 @@ app.put('/api/user/preferences', authenticateToken, (req, res) => {
     );
 });
 
-// 获取用户偏好设置
+// Get user preferences
 app.get('/api/user/preferences', authenticateToken, (req, res) => {
     db.get(
         'SELECT theme, language, notifications_enabled FROM user_preferences WHERE user_id = ?',
@@ -287,7 +287,7 @@ app.get('/api/user/preferences', authenticateToken, (req, res) => {
     );
 });
 
-// 用户登出
+// User logout
 app.post('/api/auth/logout', authenticateToken, (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     
@@ -305,7 +305,7 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
     );
 });
 
-// JWT认证中间件
+// JWT authentication middleware
 function authenticateToken(req, res, next) {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1];
@@ -324,7 +324,7 @@ function authenticateToken(req, res, next) {
     });
 }
 
-// 🆕 存储健康数据（离线存储实际数据，返回DataHash用于链上存储）
+// Store health data (offline storage, returns DataHash for on-chain)
 app.post('/api/health-data/store', authenticateToken, (req, res) => {
     const { dataType, actualData, metadata } = req.body;
     
@@ -333,7 +333,7 @@ app.post('/api/health-data/store', authenticateToken, (req, res) => {
     }
     
     try {
-        // 生成DataHash（与链上保持一致的计算方式）
+        // Generate DataHash (consistent with on-chain)
         const dataHash = require('crypto').createHash('sha256')
             .update(JSON.stringify({
                 userId: req.user.userId,
@@ -343,7 +343,7 @@ app.post('/api/health-data/store', authenticateToken, (req, res) => {
             }))
             .digest('hex');
         
-        // 存储到SQLite数据库
+        // Save to database
         db.run(
             `INSERT INTO health_data (user_id, data_hash, data_type, actual_data, metadata, updated_at) 
              VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
@@ -370,7 +370,7 @@ app.post('/api/health-data/store', authenticateToken, (req, res) => {
     }
 });
 
-// 🆕 根据DataHash检索健康数据
+// Search health data by DataHash
 app.get('/api/health-data/:dataHash', authenticateToken, (req, res) => {
     const { dataHash } = req.params;
     
@@ -390,7 +390,7 @@ app.get('/api/health-data/:dataHash', authenticateToken, (req, res) => {
                 return res.status(404).json({ error: 'Health data not found' });
             }
             
-            // 验证数据完整性
+            // Validate integrity
             const calculatedHash = require('crypto').createHash('sha256')
                 .update(JSON.stringify({
                     userId: req.user.userId,
@@ -416,7 +416,7 @@ app.get('/api/health-data/:dataHash', authenticateToken, (req, res) => {
     );
 });
 
-// 🆕 获取用户的所有健康数据（分页）
+// Get all user health data (paginated)
 app.get('/api/health-data', authenticateToken, (req, res) => {
     const { page = 1, limit = 20, dataType } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -435,7 +435,7 @@ app.get('/api/health-data', authenticateToken, (req, res) => {
     query += ' ORDER BY hd.created_at DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit), offset);
     
-    // 获取总数
+    // Get total count
     let countQuery = 'SELECT COUNT(*) as total FROM health_data WHERE user_id = ?';
     let countParams = [req.user.userId];
     
@@ -479,7 +479,7 @@ app.get('/api/health-data', authenticateToken, (req, res) => {
     });
 });
 
-// 🆕 验证DataHash与健康数据的完整性
+// Validate integrity of health data
 app.post('/api/health-data/verify', authenticateToken, (req, res) => {
     const { dataHash, dataType, actualData, timestamp } = req.body;
     
@@ -488,7 +488,7 @@ app.post('/api/health-data/verify', authenticateToken, (req, res) => {
     }
     
     try {
-        // 重新计算DataHash进行验证
+        // Recalculate the hash of the data
         const calculatedHash = require('crypto').createHash('sha256')
             .update(JSON.stringify({
                 userId: req.user.userId,
@@ -500,7 +500,7 @@ app.post('/api/health-data/verify', authenticateToken, (req, res) => {
         
         const isIntegrityValid = calculatedHash === dataHash;
         
-        // 检查数据库中是否存在该DataHash
+        // Check if the data exists in the database
         db.get(
             'SELECT * FROM health_data WHERE data_hash = ? AND user_id = ?',
             [dataHash, req.user.userId],
@@ -524,7 +524,7 @@ app.post('/api/health-data/verify', authenticateToken, (req, res) => {
     }
 });
 
-// 🆕 删除健康数据
+// Delete health data
 app.delete('/api/health-data/:dataHash', authenticateToken, (req, res) => {
     const { dataHash } = req.params;
     
@@ -546,7 +546,7 @@ app.delete('/api/health-data/:dataHash', authenticateToken, (req, res) => {
     );
 });
 
-// 健康检查端点
+// Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
@@ -555,7 +555,7 @@ app.listen(PORT, () => {
     console.log(`HealthChain Backend API running on port ${PORT}`);
 });
 
-// 关闭
+// Handle database connection close on shutdown
 process.on('SIGINT', () => {
     db.close((err) => {
         if (err) {

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 根目录：脚本所在目录（假设脚本位于项目根）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -11,7 +10,6 @@ mkdir -p "$LOG_DIR"
 echo "🚀 Starting HealthChain Development Environment"
 echo "=============================================="
 
-# 检查 Node.js（>=18）
 if ! command -v node &> /dev/null; then
   echo "❌ Node.js is not installed. Please install Node.js 18+ first."
   exit 1
@@ -22,7 +20,6 @@ if [ "${NODE_MAJOR:-0}" -lt 18 ]; then
   exit 1
 fi
 
-# 检查 npm 和 npx
 for cmd in npm npx; do
   if ! command -v "$cmd" &> /dev/null; then
     echo "❌ $cmd is not installed. Please install it."
@@ -32,7 +29,6 @@ done
 
 echo "✅ Node.js and npm/npx are available"
 
-# 安装依赖（只在需要时）
 echo "📦 Installing dependencies..."
 if [ ! -d "node_modules" ]; then
   npm ci
@@ -45,7 +41,6 @@ if [ ! -d "frontend/node_modules" ]; then
 fi
 echo "✅ Dependencies installed"
 
-# 显式声明数组以兼容不同 bash 版本
 declare -a PIDS=()
 
 cleanup() {
@@ -63,15 +58,12 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
-# 启动 Hardhat 节点
 echo "⛓️  Starting Hardhat blockchain node..."
 npx hardhat node > "$LOG_DIR/hardhat.log" 2>&1 &
 PIDS+=("$!")
-# 获取最后一个 PID 的索引并打印（兼容无负索引的 bash）
 last_index=$(( ${#PIDS[@]} - 1 ))
 echo "   • Hardhat PID: ${PIDS[$last_index]}"
 
-# 等待 RPC 可用（最大 30 秒）
 echo -n "🔎 Waiting for blockchain RPC on port 8545..."
 for i in {1..30}; do
   if curl --silent --max-time 1 http://127.0.0.1:8545 >/dev/null 2>&1; then
@@ -87,7 +79,6 @@ for i in {1..30}; do
   fi
 done
 
-# 部署智能合约（在项目根或包含 hardhat.config 的目录）
 echo "📄 Deploying smart contracts..."
 npx hardhat run scripts/deploy_with_marketplace.js --network localhost >> "$LOG_DIR/deploy.log" 2>&1 || {
   echo "❌ Contract deployment failed. See $LOG_DIR/deploy.log"
@@ -95,15 +86,15 @@ npx hardhat run scripts/deploy_with_marketplace.js --network localhost >> "$LOG_
 }
 echo "✅ Smart contracts deployed"
 
-# 启动后端
+
 echo "🔧 Starting backend API server..."
 npm --prefix backend run dev > "$LOG_DIR/backend.log" 2>&1 &
 PIDS+=("$!")
-# 计算并记录后端 PID
+
 last_index=$(( ${#PIDS[@]} - 1 ))
 BACKEND_PID=${PIDS[$last_index]}
 
-# 等待后端就绪（端口 3001）
+
 echo -n "🔎 Waiting for backend on port 3001..."
 for i in {1..20}; do
   if curl --silent --max-time 1 http://127.0.0.1:3001 >/dev/null 2>&1; then
@@ -119,7 +110,6 @@ for i in {1..20}; do
   fi
 done
 
-# 启动前端
 echo "🌐 Starting frontend development server..."
 npm --prefix frontend run dev > "$LOG_DIR/frontend.log" 2>&1 &
 PIDS+=("$!")
@@ -139,5 +129,5 @@ echo "   • Chain ID: 31337"
 echo ""
 echo "💡 To stop all services, press Ctrl+C"
 echo ""
-# 保持脚本运行，等待后台进程结束或捕获信号
+
 wait

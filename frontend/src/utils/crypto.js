@@ -1,5 +1,6 @@
 // frontend/src/utils/crypto.js
-// Encryption utils: using Web Crypto PBKDF2 for password derivation (salted hash)export async function generateSalt(length = 16) {
+// Encryption utils: using Web Crypto PBKDF2 for password derivation (salted hash)export 
+async function generateSalt(length = 16) {
     const salt = crypto.getRandomValues(new Uint8Array(length));
     return bufferToBase64(salt);
 }

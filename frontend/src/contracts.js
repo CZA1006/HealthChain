@@ -13,7 +13,6 @@ export const HTC_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)"
 ];
 
-// 🔁 UPDATED to match the JSON ABI you pasted
 export const REGISTRY_ABI = [
   // reads
   "function canAccess(uint256 dataId, address user) view returns (bool)",
