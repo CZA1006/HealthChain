@@ -1,4 +1,4 @@
-// src/pages/LoginPage.jsx - 简化版本
+// src/pages/LoginPage.jsx - Simplified version
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { healthChainAPI } from '../utils/api';
@@ -94,7 +94,7 @@ export default function LoginPage({ onLogin }) {
 
     return (
         <div className="login-page">
-            {/* 左侧：登录注册表单 */}
+            {/* Left side: Login/Register form */}
             <div className="login-section">
                 <div className="container" style={{ maxWidth: 480, paddingTop: '3rem' }}>
                     <Card 
@@ -208,7 +208,7 @@ export default function LoginPage({ onLogin }) {
                 </div>
             </div>
 
-            {/* 右侧：紫色渐变展示区 */}
+            {/* Right side: Purple gradient hero section */}
             <div className="hero-section">
                 <div className="hero-content">
                     <h1 className="hero-title">Decentralized Health Data</h1>
@@ -241,7 +241,7 @@ export default function LoginPage({ onLogin }) {
                     </div>
                 </div>
 
-                {/* 浮动装饰 */}
+                {/* Floating decorations */}
                 <div className="floating-elements">
                     <div className="float-block block-1"></div>
                     <div className="float-block block-2"></div>

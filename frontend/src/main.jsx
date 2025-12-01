@@ -13,7 +13,7 @@ function Root() {
     const [userInfo, setUserInfo] = useState(null)
 
     useEffect(() => {
-        // 检查认证状态并获取用户信息
+        // Check authentication status and get user info
         const checkAuthStatus = async () => {
             if (healthChainAPI.isAuthenticated()) {
                 try {
@@ -28,7 +28,7 @@ function Root() {
                     setLoggedIn(true)
                 } catch (error) {
                     console.error('Failed to get user info:', error)
-                    // 认证失败，清理session
+                    // Auth failed, clean session
                     await healthChainAPI.logout()
                     setLoggedIn(false)
                     setSessionInfo(null)

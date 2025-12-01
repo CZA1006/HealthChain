@@ -1,6 +1,5 @@
-// src/utils/crypto.js
-// 加密工具：使用 Web Crypto PBKDF2 做密码派生（加盐哈希）
-export async function generateSalt(length = 16) {
+// frontend/src/utils/crypto.js
+// Encryption utils: using Web Crypto PBKDF2 for password derivation (salted hash)export async function generateSalt(length = 16) {
     const salt = crypto.getRandomValues(new Uint8Array(length));
     return bufferToBase64(salt);
 }
@@ -42,6 +41,6 @@ export async function hashPassword(password, saltBase64, iterations = 100000, ke
 
 export async function verifyPassword(password, saltBase64, expectedHashBase64, iterations = 100000, keyLen = 32) {
     const h = await hashPassword(password, saltBase64, iterations, keyLen);
-    // 简单比较：基于字符串，时间恒定对比可在后端实现
+    // Simple comparison: string-based, constant-time comparison can be implemented on backend
     return h === expectedHashBase64;
 }

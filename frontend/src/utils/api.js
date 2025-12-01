@@ -1,6 +1,6 @@
 const API_BASE_URL = 'http://localhost:3001/api';
 
-// 检查后端服务是否可用
+// Check backend service availability
 async function checkBackendAvailability() {
     try {
         const response = await fetch(`${API_BASE_URL}/health`, {
@@ -12,19 +12,19 @@ async function checkBackendAvailability() {
         });
         return response.ok;
     } catch (error) {
-        console.warn('Backend service not available, falling back to localStorage');
+        console.warn('Backend not available, using localStorage fallback');
         return false;
     }
 }
 
-// localStorage fallback 实现
+// localStorage fallback implementation
 const localStorageFallback = {
-    // 用户注册
+    // User registration
     async register(userData) {
         const existingUsers = JSON.parse(localStorage.getItem('healthchain_users') || '[]');
         
-        // 检查用户名和邮箱是否已存在
-        const existingUser = existingUsers.find(user => 
+        // Check if username or email exists
+        const existingUser = existingUsers.find(user =>
             user.username === userData.username || user.email === userData.email
         );
         
@@ -46,17 +46,17 @@ const localStorageFallback = {
         return { message: 'User registered successfully', userId: newUser.id };
     },
     
-    // 用户登录 - 修复版
+    // User login - fixed version
     async login(credentials) {
         const users = JSON.parse(localStorage.getItem('healthchain_users') || '[]');
         
         let user;
         if (credentials.walletAddress) {
-            // 钱包登录
+            // Wallet login
             user = users.find(u => u.walletAddress === credentials.walletAddress);
         } else if (credentials.username) {
-            // ✅ 修复：同时匹配 username 和 email 字段
-            user = users.find(u => 
+            // Fixed: match both username and email fields
+            user = users.find(u =>
                 u.username === credentials.username || 
                 u.email === credentials.username
             );
@@ -66,14 +66,14 @@ const localStorageFallback = {
             throw new Error('Invalid credentials');
         }
         
-        // 生成模拟token
+        // Generate mock token
         const token = btoa(JSON.stringify({
             userId: user.id,
             username: user.username,
             exp: Date.now() + 24 * 60 * 60 * 1000
         }));
         
-        // 保存会话
+        // Save session
         const session = {
             token,
             user: {
@@ -91,7 +91,7 @@ const localStorageFallback = {
         return session;
     },
     
-    // 获取当前用户
+    // Get current user
     async getCurrentUser() {
         const sessionStr = localStorage.getItem('healthchain_session');
         if (!sessionStr) {
@@ -106,7 +106,7 @@ const localStorageFallback = {
             throw new Error('Invalid session');
         }
         
-        // 检查token是否过期
+        // Check token expiration
         try {
             const tokenData = JSON.parse(atob(token));
             if (tokenData.exp < Date.now()) {
@@ -121,14 +121,14 @@ const localStorageFallback = {
         return session.user;
     },
     
-    // 用户登出
+    // User logout
     async logout() {
         localStorage.removeItem('healthchain_session');
         localStorage.removeItem('healthchain_token');
         return { message: 'Logged out successfully' };
     },
     
-    // 更新用户偏好设置
+    // Update user preferences
     async updatePreferences(preferences) {
         const sessionStr = localStorage.getItem('healthchain_session');
         if (!sessionStr) {
@@ -149,7 +149,7 @@ const localStorageFallback = {
         return { message: 'Preferences updated successfully' };
     },
     
-    // 获取用户偏好设置
+    // Get user preferences
     async getPreferences() {
         const sessionStr = localStorage.getItem('healthchain_session');
         if (!sessionStr) {
@@ -169,7 +169,7 @@ const localStorageFallback = {
     }
 };
 
-// API服务主类
+// Main API service class
 export class HealthChainAPI {
     constructor() {
         this.useBackend = true;
@@ -207,7 +207,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 用户注册
+    // User registration
     async register(userData) {
         if (this.useBackend) {
             return await this.makeRequest('/auth/register', {
@@ -219,7 +219,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 用户登录
+    // User login
     async login(credentials) {
         if (this.useBackend) {
             const result = await this.makeRequest('/auth/login', {
@@ -227,7 +227,7 @@ export class HealthChainAPI {
                 body: JSON.stringify(credentials)
             });
             
-            // 保存token到localStorage用于兼容性
+            // Save token to localStorage for compatibility
             if (result.token) {
                 localStorage.setItem('healthchain_token', result.token);
             }
@@ -238,7 +238,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 获取当前用户
+    // Get current user
     async getCurrentUser() {
         if (this.useBackend) {
             const token = localStorage.getItem('healthchain_token');
@@ -256,7 +256,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 用户登出
+    // User logout
     async logout() {
         if (this.useBackend) {
             const token = localStorage.getItem('healthchain_token');
@@ -270,14 +270,14 @@ export class HealthChainAPI {
             }
         }
         
-        // 总是清理localStorage
+        // Always clean localStorage
         const result = await localStorageFallback.logout();
         localStorage.removeItem('healthchain_token');
         
         return result;
     }
     
-    // 更新用户偏好设置
+    // Update user preferences
     async updatePreferences(preferences) {
         if (this.useBackend) {
             const token = localStorage.getItem('healthchain_token');
@@ -297,7 +297,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 获取用户偏好设置
+    // Get user preferences
     async getPreferences() {
         if (this.useBackend) {
             const token = localStorage.getItem('healthchain_token');
@@ -315,21 +315,21 @@ export class HealthChainAPI {
         }
     }
     
-    // 检查认证状态
+    // Check authentication status
     isAuthenticated() {
         const token = localStorage.getItem('healthchain_token');
         if (!token) return false;
         
-        // 简单的token存在性检查
+        // Simple token existence check
         return true;
     }
     
-    // 获取认证token
+    // Get auth token
     getToken() {
         return localStorage.getItem('healthchain_token');
     }
     
-    // 🆕 存储健康数据（离线存储实际数据，返回DataHash用于链上存储）
+    // Store health data (offline storage, returns DataHash for on-chain)
     async storeHealthData(healthData) {
         if (this.useBackend) {
             const token = this.getToken();
@@ -348,7 +348,7 @@ export class HealthChainAPI {
             // localStorage fallback
             const healthDataList = JSON.parse(localStorage.getItem('healthchain_health_data') || '[]');
             
-            // 生成DataHash（简化版本）
+            // Generate DataHash (simplified)
             const dataHash = btoa(JSON.stringify({
                 ...healthData,
                 timestamp: Date.now()
@@ -373,7 +373,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 🆕 根据DataHash检索健康数据
+    // Retrieve health data by DataHash
     async getHealthDataByHash(dataHash) {
         if (this.useBackend) {
             const token = this.getToken();
@@ -403,7 +403,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 🆕 获取用户的所有健康数据（分页）
+    // Get all user health data (paginated)
     async getHealthDataList(options = {}) {
         const { page = 1, limit = 20, dataType } = options;
         
@@ -431,13 +431,13 @@ export class HealthChainAPI {
             // localStorage fallback
             const healthDataList = JSON.parse(localStorage.getItem('healthchain_health_data') || '[]');
             
-            // 过滤和分页
+            // Filter and paginate
             let filteredData = healthDataList;
             if (dataType) {
                 filteredData = filteredData.filter(item => item.dataType === dataType);
             }
             
-            // 按创建时间排序
+            // Sort by creation time
             filteredData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             
             const startIndex = (page - 1) * limit;
@@ -456,7 +456,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 🆕 验证DataHash与健康数据的完整性
+    // Verify DataHash and health data integrity
     async verifyHealthDataIntegrity(verificationData) {
         if (this.useBackend) {
             const token = this.getToken();
@@ -472,7 +472,7 @@ export class HealthChainAPI {
                 body: JSON.stringify(verificationData)
             });
         } else {
-            // localStorage fallback - 简化验证
+            // localStorage fallback - simplified verification
             const healthDataList = JSON.parse(localStorage.getItem('healthchain_health_data') || '[]');
             const healthData = healthDataList.find(item => item.dataHash === verificationData.dataHash);
             
@@ -490,7 +490,7 @@ export class HealthChainAPI {
         }
     }
     
-    // 🆕 删除健康数据
+    // Delete health data
     async deleteHealthData(dataHash) {
         if (this.useBackend) {
             const token = this.getToken();
@@ -520,7 +520,7 @@ export class HealthChainAPI {
     }
 }
 
-// 创建全局API实例
+// Create global API instance
 export const healthChainAPI = new HealthChainAPI();
 
 export default healthChainAPI;

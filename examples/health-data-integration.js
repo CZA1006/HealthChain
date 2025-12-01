@@ -1,5 +1,5 @@
 // Health Data Integration Example
-// 演示链上DataHash与离线SQLite存储的结合使用
+// Demonstrates combining on-chain DataHash with offline SQLite storage
 
 const { ethers } = require('ethers');
 const axios = require('axios');
@@ -14,7 +14,7 @@ class HealthDataIntegration {
         this.wallet = null;
     }
 
-    // 初始化以太坊连接
+    // Initialize Ethereum connection
     async initializeEthereum(privateKey, rpcUrl = 'http://localhost:8545') {
         this.provider = new ethers.JsonRpcProvider(rpcUrl);
         this.wallet = new ethers.Wallet(privateKey, this.provider);
@@ -22,13 +22,13 @@ class HealthDataIntegration {
         console.log('✅ Ethereum connection initialized');
     }
 
-    // 设置认证token
+    // Set authentication token
     setAuthToken(token) {
         this.authToken = token;
         console.log('✅ Authentication token set');
     }
 
-    // 生成健康数据的DataHash（与后端保持一致）
+    // Generate DataHash for health data (consistent with backend)
     generateDataHash(healthData) {
         const crypto = require('crypto');
         return crypto.createHash('sha256')
@@ -41,16 +41,16 @@ class HealthDataIntegration {
             .digest('hex');
     }
 
-    // 完整的数据存储流程：离线存储 + 链上注册
+    // Complete data storage flow: offline storage + on-chain registration
     async storeHealthDataWithBlockchain(healthData) {
         try {
             console.log('🚀 Starting health data storage process...');
             
-            // 1. 生成DataHash
+            // 1. Generate DataHash
             const dataHash = this.generateDataHash(healthData);
             console.log('📊 Generated DataHash:', dataHash);
 
-            // 2. 离线存储实际健康数据到SQLite
+            // 2. Store actual health data offline to SQLite
             const offlineResult = await this.storeOfflineHealthData({
                 dataType: healthData.dataType,
                 actualData: healthData.actualData,
@@ -58,9 +58,9 @@ class HealthDataIntegration {
             });
             console.log('💾 Offline storage completed:', offlineResult.message);
 
-            // 3. 链上注册DataHash
+            // 3. Register DataHash on-chain
             const tx = await this.contract.registerData(
-                '0x' + dataHash, // 转换为bytes32格式
+                '0x' + dataHash, // Convert to bytes32 format
                 healthData.dataType,
                 healthData.uri || ''
             );
@@ -68,7 +68,7 @@ class HealthDataIntegration {
             const receipt = await tx.wait();
             console.log('⛓️  Blockchain registration completed:', receipt.transactionHash);
 
-            // 4. 从事件中提取dataId
+            // 4. Extract dataId from event
             const dataRegisteredEvent = receipt.logs.find(log => 
                 log.fragment && log.fragment.name === 'DataRegistered'
             );
@@ -92,7 +92,7 @@ class HealthDataIntegration {
         }
     }
 
-    // 离线存储健康数据
+    // Store health data offline
     async storeOfflineHealthData(healthData) {
         const response = await axios.post(
             `${this.backendUrl}/health-data/store`,
@@ -107,12 +107,12 @@ class HealthDataIntegration {
         return response.data;
     }
 
-    // 根据DataHash检索完整数据
+    // Retrieve complete data by DataHash
     async retrieveHealthData(dataHash) {
         try {
             console.log('🔍 Retrieving health data for hash:', dataHash);
             
-            // 1. 从链上获取数据记录
+            // 1. Get data record from chain
             const chainData = await this.contract.records(dataHash);
             console.log('⛓️  Chain data retrieved:', {
                 provider: chainData.provider,
@@ -121,7 +121,7 @@ class HealthDataIntegration {
                 createdAt: new Date(chainData.createdAt * 1000).toISOString()
             });
 
-            // 2. 从离线存储获取实际数据
+            // 2. Get actual data from offline storage
             const offlineData = await this.retrieveOfflineHealthData(dataHash);
             console.log('💾 Offline data retrieved:', {
                 dataType: offlineData.dataType,
@@ -129,7 +129,7 @@ class HealthDataIntegration {
                 integrityValid: offlineData.integrityValid
             });
 
-            // 3. 验证数据完整性
+            // 3. Verify data integrity
             const verification = await this.verifyHealthDataIntegrity({
                 dataHash: dataHash,
                 dataType: offlineData.dataType,
@@ -156,7 +156,7 @@ class HealthDataIntegration {
         }
     }
 
-    // 从离线存储检索健康数据
+    // Retrieve health data from offline storage
     async retrieveOfflineHealthData(dataHash) {
         const response = await axios.get(
             `${this.backendUrl}/health-data/${dataHash}`,
@@ -169,7 +169,7 @@ class HealthDataIntegration {
         return response.data;
     }
 
-    // 验证数据完整性
+    // Verify data integrity
     async verifyHealthDataIntegrity(verificationData) {
         const response = await axios.post(
             `${this.backendUrl}/health-data/verify`,
@@ -184,7 +184,7 @@ class HealthDataIntegration {
         return response.data;
     }
 
-    // 获取用户的所有健康数据
+    // Get all user health data
     async getUserHealthData(options = {}) {
         const params = new URLSearchParams({
             page: options.page || '1',
@@ -206,12 +206,12 @@ class HealthDataIntegration {
         return response.data;
     }
 
-    // 批量验证用户数据完整性
+    // Batch verify user data integrity
     async batchVerifyUserData() {
         try {
             console.log('🔍 Starting batch data verification...');
             
-            // 获取用户的所有离线数据
+            // Get all user offline data
             const userData = await this.getUserHealthData({ limit: 100 });
             console.log(`📊 Found ${userData.data.length} health data records`);
 
@@ -219,11 +219,11 @@ class HealthDataIntegration {
             
             for (const data of userData.data) {
                 try {
-                    // 验证链上存在性
+                    // Verify on-chain existence
                     const chainData = await this.contract.records(data.dataHash);
                     const existsOnChain = chainData.provider !== ethers.ZeroAddress;
                     
-                    // 验证数据完整性
+                    // Verify data integrity
                     const integrityCheck = await this.verifyHealthDataIntegrity({
                         dataHash: data.dataHash,
                         dataType: data.dataType,
@@ -262,23 +262,23 @@ class HealthDataIntegration {
     }
 }
 
-// 使用示例
+// Usage example
 async function demonstrateIntegration() {
     console.log('🏥 Health Data Integration Demo\n');
 
-    // 初始化集成实例
+    // Initialize integration instance
     const integration = new HealthDataIntegration(
-        '0xYourContractAddress', // 替换为实际的合约地址
+        '0xYourContractAddress', // Replace with actual contract address
         require('../artifacts/contracts/DataRegistry.sol/DataRegistry.json').abi
     );
 
-    // 设置认证token（需要先登录获取）
+    // Set authentication token (need to login first)
     integration.setAuthToken('your-jwt-token-here');
 
-    // 初始化以太坊连接
+    // Initialize Ethereum connection
     await integration.initializeEthereum('your-private-key-here');
 
-    // 示例健康数据
+    // Sample health data
     const sampleHealthData = {
         userId: 1,
         dataType: 'daily_metrics',
@@ -298,18 +298,18 @@ async function demonstrateIntegration() {
         uri: 'ipfs://QmExampleHealthData'
     };
 
-    // 1. 存储健康数据
+    // 1. Store health data
     console.log('\n1. Storing Health Data...');
     const storageResult = await integration.storeHealthDataWithBlockchain(sampleHealthData);
     console.log('Storage Result:', storageResult);
 
     if (storageResult.success) {
-        // 2. 检索健康数据
+        // 2. Retrieve health data
         console.log('\n2. Retrieving Health Data...');
         const retrievedData = await integration.retrieveHealthData(storageResult.dataHash);
         console.log('Retrieved Data:', JSON.stringify(retrievedData, null, 2));
 
-        // 3. 批量验证
+        // 3. Batch verification
         console.log('\n3. Batch Verification...');
         const batchResults = await integration.batchVerifyUserData();
         console.log('Batch Results:', batchResults);
@@ -318,10 +318,10 @@ async function demonstrateIntegration() {
     console.log('\n🎉 Demo completed successfully!');
 }
 
-// 导出供其他模块使用
+// Export for use by other modules
 module.exports = HealthDataIntegration;
 
-// 如果直接运行此文件，执行演示
+// If running this file directly, execute demo
 if (require.main === module) {
     demonstrateIntegration().catch(console.error);
 }

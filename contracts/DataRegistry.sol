@@ -6,15 +6,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 uint256 constant NULL = 0;
 
 contract DataRegistry is Ownable {
-    // 🆕 健康数据指标结构
+    // Health data metrics structure
     struct HealthMetrics {
-        uint256 steps;          // 步数
-        uint256 heartRate;      // 心率 (bpm)
-        uint256 sleepMinutes;   // 睡眠时间 (分钟)
-        uint256 calories;       // 卡路里
-        uint256 distance;       // 距离 (米)
-        uint256 activeMinutes;  // 活动时间 (分钟)
-        string metricType;      // 数据类型: "daily", "weekly", "monthly"
+        uint256 steps;          // Step count
+        uint256 heartRate;      // Heart rate (bpm)
+        uint256 sleepMinutes;   // Sleep duration (minutes)
+        uint256 calories;       // Calories burned
+        uint256 distance;       // Distance (meters)
+        uint256 activeMinutes;  // Active time (minutes)
+        string metricType;      // Data type: "daily", "weekly", "monthly"
     }
 
     struct DataRecord {
@@ -23,12 +23,12 @@ contract DataRegistry is Ownable {
         string dataType;        // e.g. "steps", "heart_rate", "health_report"
         string uri;             // optional pointer (ipfs://..., https://..., etc.)
         uint64 createdAt;       // timestamp
-        HealthMetrics metrics;  // 🆕 健康数据指标
-        bool hasMetrics;        // 🆕 是否包含健康指标数据
+        HealthMetrics metrics;  // Health data metrics
+        bool hasMetrics;        // Whether contains health metrics
     }
 
-    // 🆕 改进：使用基于用户地址的分片ID设计
-    mapping(address => uint256) public userNextDataAddr;  // 每个用户独立的计数器
+    // User-based sharded ID design
+    mapping(address => uint256) public userNextDataAddr;  // Independent counter per user
     mapping(uint256 => DataRecord) public records;
     mapping(uint256 => mapping(address => bool)) public hasAccess;
 
@@ -41,7 +41,7 @@ contract DataRegistry is Ownable {
         bytes32 dataHash,
         string dataType,
         string uri,
-        bool hasMetrics  // 🆕 事件中添加 hasMetrics
+        bool hasMetrics  // Whether has metrics
     );
 
     event AccessGranted(
@@ -61,22 +61,22 @@ contract DataRegistry is Ownable {
     // Ownable in OZ v5 needs initial owner in constructor
     constructor() Ownable(msg.sender) {}
 
-    /// @notice 🆕 生成全局唯一的dataAddr
+    /// @notice Generate globally unique dataAddr
     function _generateDataAddr(address user) internal returns (uint256) {
         uint256 userCounter = userNextDataAddr[user] + 1;
         userNextDataAddr[user] = userCounter;
 
-        // dataAddr结构：高160位为用户地址，低96位为用户数据计数器
-        // 这样可以确保全局唯一性，同时支持并发调用
+        // dataAddr structure: high 160 bits = user address, low 96 bits = counter
+        // Ensures global uniqueness and supports concurrent calls
         return (uint256(uint160(user)) << 96) | userCounter;
     }
 
-    /// @notice 🆕 从dataAddr中提取用户地址
+    /// @notice Extract user address from dataAddr
     function getProviderFromDataAddr(uint256 dataAddr) public pure returns (address) {
         return address(uint160(dataAddr >> 96));
     }
 
-    /// @notice 🆕 从dataAddr中提取用户数据序号
+    /// @notice Extract user data index from dataAddr
     function getUserDataIndex(uint256 dataAddr) public pure returns (uint256) {
         return dataAddr & ((1 << 96) - 1);
     }
@@ -97,7 +97,7 @@ contract DataRegistry is Ownable {
         _;
     }
 
-    /// @notice 注册数据（不带健康指标，向后兼容）
+    /// @notice Register data (without health metrics, backward compatible)
     function registerData(
         bytes32 dataHash,
         string calldata dataType,
@@ -107,7 +107,7 @@ contract DataRegistry is Ownable {
 
         uint256 dataAddr = _generateDataAddr(msg.sender);
 
-        // 创建空的健康指标
+        // Create empty health metrics
         HealthMetrics memory emptyMetrics;
 
         records[dataAddr] = DataRecord({
@@ -124,7 +124,7 @@ contract DataRegistry is Ownable {
         return dataAddr;
     }
 
-    /// @notice 🆕 注册数据（带健康指标）
+    /// @notice Register data with health metrics
     function registerDataWithMetrics(
         bytes32 dataHash,
         string calldata dataType,
@@ -153,7 +153,7 @@ contract DataRegistry is Ownable {
         return dataAddr;
     }
 
-    /// @notice 🆕 获取健康数据指标
+    /// @notice Get health data metrics
     function getHealthMetrics(uint256 dataAddr) external view returns (
         uint256 steps,
         uint256 heartRate,
@@ -179,14 +179,14 @@ contract DataRegistry is Ownable {
         );
     }
 
-    /// @notice 🆕 获取用户的所有数据 Addr
+    /// @notice Get all data addresses for a user
     function getUserDataAddrs(address user) external view returns (uint256[] memory) {
         uint256 userCounter = userNextDataAddr[user];
         if (userCounter == 0) {
             return new uint256[](0);
         }
         
-        // 先计算有效数据数量
+        // Calculate valid data count first
         uint256 validCount = 0;
         for (uint256 i = 1; i <= userCounter; i++) {
             uint256 dataAddr = (uint256(uint160(user)) << 96) | i;
@@ -199,7 +199,7 @@ contract DataRegistry is Ownable {
             return new uint256[](0);
         }
         
-        // 创建正确大小的数组
+        // Create array with correct size
         uint256[] memory userDataAddrs = new uint256[](validCount);
         uint256 index = 0;
         
@@ -214,16 +214,16 @@ contract DataRegistry is Ownable {
         return userDataAddrs;
     }
 
-    /// @notice 🆕 获取用户的所有数据索引（低96位计数器值）
-    /// @param user 用户地址
-    /// @return 包含所有有效数据索引的数组
+    /// @notice Get all data indices for a user (low 96-bit counter values)
+    /// @param user User address
+    /// @return Array containing all valid data indices
     function getUserIndices(address user) external view returns (uint256[] memory) {
         uint256 userCounter = userNextDataAddr[user];
         if (userCounter == 0) {
             return new uint256[](0);
         }
 
-        // 先计算有效数据数量
+        // Calculate valid data count first
         uint256 validCount = 0;
         for (uint256 i = 1; i <= userCounter; i++) {
             uint256 dataAddr = (uint256(uint160(user)) << 96) | i;
@@ -236,14 +236,14 @@ contract DataRegistry is Ownable {
             return new uint256[](0);
         }
 
-        // 创建正确大小的数组，存储索引值
+        // Create array with correct size to store indices
         uint256[] memory userIndices = new uint256[](validCount);
         uint256 index = 0;
 
         for (uint256 i = 1; i <= userCounter; i++) {
             uint256 dataAddr = (uint256(uint160(user)) << 96) | i;
             if (records[dataAddr].provider != address(0)) {
-                // 提取并存储索引值（低96位）
+                // Extract and store index value (low 96 bits)
                 userIndices[index] = getUserDataIndex(dataAddr);
                 index++;
             }
@@ -252,13 +252,13 @@ contract DataRegistry is Ownable {
         return userIndices;
     }
 
-    /// @notice 🆕 撤销数据（符合"被遗忘权"）
+    /// @notice Revoke data (right to be forgotten)
     function revokeData(uint256 dataAddr) external {
         address provider = getProviderFromDataAddr(dataAddr);
         require(provider == msg.sender, "Not data owner");
         require(records[dataAddr].provider != address(0), "Data not found");
 
-        // 标记数据为已删除（不真正删除，保留历史记录）
+        // Mark data as deleted (preserves history)
         delete records[dataAddr];
     }
 
@@ -284,7 +284,7 @@ contract DataRegistry is Ownable {
         DataRecord memory rec = records[dataAddr];
         if (rec.provider == address(0)) return false;
         
-        // 使用新的dataAddr结构验证所有者
+        // Verify owner using new dataAddr structure
         address providerFromAddr = getProviderFromDataAddr(dataAddr);
         if (user == providerFromAddr) return true;
 

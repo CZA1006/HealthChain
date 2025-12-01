@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IDataRegistry {
-    // 健康数据结构
+    // Health metrics structure
     struct HealthMetrics {
         uint256 steps;
         uint256 heartRate;
@@ -84,7 +84,7 @@ contract Marketplace {
     {
         require(price > 0, "Price must be > 0");
 
-        // ✅ 修复：现在是7个返回值
+        // Fixed: now returns 7 values
         (address owner,,,,,,) = registry.records(dataAddr);
         require(owner != address(0), "Data not found");
         require(owner == msg.sender, "Not data owner");
@@ -131,7 +131,7 @@ contract Marketplace {
         // If you want one-time sale, you could also do: l.active = false;
     }
 
-    /// @notice 获取 listing 的健康数据预览（用于前端展示）
+    /// @notice Get health data preview for listing (for frontend display)
     function getListingHealthPreview(uint256 listingId) external view returns (
         uint256 steps,
         uint256 heartRate,
@@ -156,22 +156,22 @@ contract Marketplace {
         return (_steps, _heartRate, _calories, _metricType, _hasMetrics);
     }
 
-    /// @notice 批量获取所有活跃 listings
+    /// @notice Get all active listings
     function getActiveListings() external view returns (uint256[] memory) {
         uint256 count = 0;
         
-        // 先计数
+        // Count first
         for (uint256 i = 1; i <= nextListingId; i++) {
             if (listings[i].active) {
                 count++;
             }
         }
         
-        // 创建数组
+        // Create array
         uint256[] memory activeListings = new uint256[](count);
         uint256 index = 0;
         
-        // 填充数组
+        // Fill array
         for (uint256 i = 1; i <= nextListingId; i++) {
             if (listings[i].active) {
                 activeListings[index] = i;

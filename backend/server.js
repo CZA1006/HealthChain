@@ -13,11 +13,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'healthchain-secret-key';
 
-// 中间件
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// SQLite数据库初始化
+// Init SQLite
 const db = new sqlite3.Database(join(__dirname, 'healthchain.db'), (err) => {
     if (err) {
         console.error('Error opening database:', err);
@@ -27,7 +27,6 @@ const db = new sqlite3.Database(join(__dirname, 'healthchain.db'), (err) => {
     }
 });
 
-// 初始化数据库表
 function initializeDatabase() {
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
@@ -63,7 +62,7 @@ function initializeDatabase() {
         )
     `);
 
-    // 🆕 健康数据存储表 - 离线存储实际健康数据
+    // Health data storage table - offline storage for actual health data
     db.run(`
         CREATE TABLE IF NOT EXISTS health_data (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,14 +82,15 @@ function initializeDatabase() {
         CREATE INDEX IF NOT EXISTS idx_health_data_created ON health_data(created_at);
     `);
 
-    // 🆕 创建索引提升查询性能
+    // Create indexes for query performance
     // db.run('CREATE INDEX IF NOT EXISTS idx_health_data_user_id ON health_data(user_id)');
     // db.run('CREATE INDEX IF NOT EXISTS idx_health_data_hash ON health_data(data_hash)');
     // db.run('CREATE INDEX IF NOT EXISTS idx_health_data_type ON health_data(data_type)');
     // db.run('CREATE INDEX IF NOT EXISTS idx_health_data_created ON health_data(created_at)');
 }
 
-// 用户注册
+
+// User registration
 app.post('/api/auth/register', async (req, res) => {
     const { username, email, password, walletAddress } = req.body;
 
@@ -121,21 +121,21 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// 用户登录 - 修复版
+// User login - fixed version
 app.post('/api/auth/login', async (req, res) => {
     const { username, password, walletAddress } = req.body;
 
     try {
-        // 构建动态查询条件
+        // Build dynamic query conditions
         let query = 'SELECT * FROM users WHERE ';
         let params = [];
         
         if (walletAddress) {
-            // 钱包登录
+            // Wallet login
             query += 'wallet_address = ?';
             params.push(walletAddress);
         } else if (username) {
-            // 用户名/邮箱登录 - 同时匹配两个字段
+            // Username/email login - match both fields
             query += '(username = ? OR email = ?)';
             params.push(username, username);
         } else {
@@ -152,7 +152,7 @@ app.post('/api/auth/login', async (req, res) => {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
 
-            // 钱包登录验证
+            // Wallet login verification
             if (walletAddress && user.wallet_address === walletAddress) {
                 const token = jwt.sign(
                     { userId: user.id, username: user.username },
