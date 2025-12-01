@@ -1232,17 +1232,17 @@ This calls `DataRegistry.canAccess(dataId, currentAddress)` and confirms that th
 
 ### 7.5 Key Achievements
 
-**✅ Complete Token Economy**: HTC token used across all features  
-**✅ Hybrid Storage**: On-chain + off-chain data management  
-**✅ Comprehensive Health Metrics**: 6 different health data points  
-**✅ Gamification**: Move-to-Earn reward system  
-**✅ Decentralized Marketplace**: P2P health data trading  
-**✅ User Authentication**: Multiple authentication methods  
-**✅ Data Privacy**: Hash-based on-chain storage  
-**✅ Security**: ReentrancyGuard, access control, JWT auth  
-**✅ Scalability**: Modular architecture, easy to extend  
-**✅ User Experience**: Intuitive UI, real-time updates  
-**✅ Developer Experience**: Automated setup, comprehensive docs
+- **Complete Token Economy**: HTC token used across all features  
+- **Hybrid Storage**: On-chain + off-chain data management  
+- **Comprehensive Health Metrics**: 6 different health data points  
+- **Gamification**: Move-to-Earn reward system  
+- **Decentralized Marketplace**: P2P health data trading  
+- **User Authentication**: Multiple authentication methods  
+- **Data Privacy**: Hash-based on-chain storage  
+- **Security**: ReentrancyGuard, access control, JWT auth  
+- **Scalability**: Modular architecture, easy to extend  
+- **User Experience**: Intuitive UI, real-time updates  
+- **Developer Experience**: Automated setup, comprehensive docs
 ---
 
 ## 8. Technical Highlights & Innovations
